@@ -18,3 +18,8 @@ format:
 analyse:
 	@docker-compose up -d app
 	@docker-compose exec app elm-analyse
+
+.PHONY: test
+test:
+	@docker-compose up -d app
+	@docker-compose exec app elm-test
