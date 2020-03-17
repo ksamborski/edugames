@@ -1,4 +1,4 @@
-module MultiplicationTest exposing (calculatingResultSuite, decimalsSuite, multiplicationSuite)
+module MultiplicationTest exposing (calculatingResultSuite, decimalsSuite, errorsSuite, multiplicationSuite)
 
 import Expect exposing (Expectation)
 import Fuzz
@@ -32,7 +32,7 @@ decimalsSuite =
 
 calculatingResultSuite : Test
 calculatingResultSuite =
-    describe "checking correct multiplication results"
+    describe "checking detailed and correct multiplication results"
         [ test "83 * 97" <|
             \_ ->
                 let
@@ -59,4 +59,18 @@ calculatingResultSuite =
                         }
                 in
                 Multiplication.correctResult 12 9 |> Expect.equal result
+        ]
+
+
+errorsSuite : Test
+errorsSuite =
+    describe "checking verification algorithm"
+        [ fuzz
+            (Fuzz.map2 Tuple.pair
+                (Fuzz.intRange 0 100000)
+                (Fuzz.intRange 0 100000)
+            )
+            "checking correct result"
+          <|
+            \( n, m ) -> Multiplication.errors (Multiplication.correctResult n m) |> Expect.equal Nothing
         ]

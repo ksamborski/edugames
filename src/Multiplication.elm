@@ -1,4 +1,4 @@
-module Multiplication exposing (Multiplication, correctResult, decimals, main)
+module Multiplication exposing (Multiplication, correctResult, decimals, errors, main)
 
 import Browser
 import Html
@@ -256,10 +256,56 @@ emptyAnnotatedMultiplication =
     }
 
 
-checkResult : Multiplication -> AnnotatedMultiplication
-checkResult m =
-    -- TODO the actual checking
-    { emptyAnnotatedMultiplication | multiplicand = m.multiplicand, multiplier = m.multiplier }
+equalLenList : a -> List a -> List a -> ( List a, List a )
+equalLenList filler lst1 lst2 =
+    let
+        lst1len =
+            List.length lst1
+
+        lst2len =
+            List.length lst2
+    in
+    if lst1len > lst2len then
+        ( lst1, List.repeat (lst1len - lst2len) filler ++ lst2 )
+
+    else
+        ( List.repeat (lst2len - lst1len) filler ++ lst1, lst2 )
+
+
+errors : Multiplication -> Maybe AnnotatedMultiplication
+errors m =
+    let
+        correct =
+            correctResult m.multiplicand m.multiplier
+
+        diff =
+            { emptyAnnotatedMultiplication | multiplicand = m.multiplicand, multiplier = m.multiplier }
+
+        ( givenResRows, wantedResRows ) =
+            equalLenList [] m.resultRows correct.resultRows
+    in
+    Just
+        { diff
+            | resultRows =
+                lift2
+                    (\l r ->
+                        equalLenList 0 l r
+                            |> (\( l2, r2 ) ->
+                                    lift2
+                                        (\le re ->
+                                            if le == re then
+                                                IsOk le
+
+                                            else
+                                                IsWrong le re
+                                        )
+                                        l2
+                                        r2
+                               )
+                    )
+                    givenResRows
+                    wantedResRows
+        }
 
 
 main : Program () Model Msg
