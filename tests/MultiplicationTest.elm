@@ -1,9 +1,21 @@
-module MultiplicationTest exposing (calculatingResultSuite, decimalsSuite)
+module MultiplicationTest exposing (calculatingResultSuite, decimalsSuite, multiplicationSuite)
 
 import Expect exposing (Expectation)
-import Fuzz exposing (Fuzzer, int, list, string)
+import Fuzz
 import Multiplication
 import Test exposing (..)
+
+
+multiplicationSuite : Test
+multiplicationSuite =
+    fuzz
+        (Fuzz.map2 Tuple.pair (Fuzz.intRange 0 100000) (Fuzz.intRange 0 100000))
+        "checking multiplication results"
+    <|
+        \( n, m ) ->
+            Expect.equal
+                (Multiplication.decimals (n * m))
+                (Multiplication.correctResult n m).finalResult
 
 
 decimalsSuite : Test
@@ -27,10 +39,10 @@ calculatingResultSuite =
                     result =
                         { multiplicand = 83
                         , multiplier = 97
-                        , resultRows = [ [ 7, 4, 7 ], [ 5, 8, 1 ] ]
+                        , resultRows = [ [ 7, 4, 7, 0 ], [ 5, 8, 1 ] ]
                         , upperRows = [ [ 7, 2 ], [ 5, 2 ] ]
-                        , sumUpperRow = [ 1, 1, 0 ]
-                        , finalResult = [ 1, 3, 2, 8 ]
+                        , sumUpperRow = [ 0, 1, 1, 0 ]
+                        , finalResult = [ 8, 0, 5, 1 ]
                         }
                 in
                 Multiplication.correctResult 83 97 |> Expect.equal result

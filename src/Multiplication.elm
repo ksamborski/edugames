@@ -2,7 +2,7 @@ module Multiplication exposing (Multiplication, correctResult, decimals, main)
 
 import Browser
 import Html
-import List.Extra exposing (cartesianProduct, groupsOf, interweave, lift2, transpose)
+import List.Extra exposing (cartesianProduct, dropWhile, groupsOf, interweave, lift2, transpose)
 import Random
 
 
@@ -29,7 +29,7 @@ type alias Multiplication =
 
 type Step
     = Calculate ( Int, Int )
-    | SaveRow
+    | SaveRow Int
 
 
 type Msg
@@ -68,11 +68,33 @@ correctResult n1 n2 =
 
 sumResults : Multiplication -> Multiplication
 sumResults m =
-    Tuple.first <|
-        List.foldl
-            runSumStep
-            ( m, 0 )
-            ((List.reverse <| transpose m.resultRows) ++ [ [] ])
+    let
+        maxResultNumDig =
+            Maybe.withDefault 0 <|
+                List.maximum <|
+                    List.map List.length m.resultRows
+
+        resultsWithZeros =
+            List.map
+                (\row -> List.repeat (maxResultNumDig - List.length row) 0 ++ row)
+                m.resultRows
+
+        result =
+            Tuple.first <|
+                List.foldl
+                    runSumStep
+                    ( m, 0 )
+                    ((List.reverse <| transpose resultsWithZeros) ++ [ [] ])
+
+        trFinalResult =
+            case dropWhile ((==) 0) result.finalResult of
+                [] ->
+                    [ 0 ]
+
+                r ->
+                    r
+    in
+    { result | finalResult = trFinalResult }
 
 
 runSumStep : List Int -> ( Multiplication, Int ) -> ( Multiplication, Int )
@@ -142,19 +164,21 @@ runMultiplicationStep op acc =
             , rest = newRest
             }
 
-        SaveRow ->
+        SaveRow zeros ->
             let
                 mult =
                     acc.multStage
+
+                resultSignDigits =
+                    if acc.rest > 0 then
+                        acc.rest :: acc.resultRow
+
+                    else
+                        acc.resultRow
             in
             { multStage =
                 { mult
-                    | resultRows =
-                        if acc.rest > 0 then
-                            (acc.rest :: acc.resultRow) :: mult.resultRows
-
-                        else
-                            acc.resultRow :: mult.resultRows
+                    | resultRows = (resultSignDigits ++ List.repeat zeros 0) :: mult.resultRows
                     , upperRows = acc.upperRow :: mult.upperRows
                 }
             , resultRow = []
@@ -184,7 +208,7 @@ multiplicationSteps n1 n2 =
             )
         |> groupsOf (List.length decN1)
         |> (\l ->
-                interweave l (List.repeat (List.length decN2) [ SaveRow ])
+                interweave l (List.indexedMap (\i f -> [ f i ]) <| List.repeat (List.length decN2) SaveRow)
                     |> List.concat
            )
 
