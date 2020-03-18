@@ -2,7 +2,7 @@ module Multiplication exposing (Multiplication, correctResult, decimals, errors,
 
 import Browser
 import Html
-import List.Extra exposing (cartesianProduct, dropWhile, groupsOf, interweave, lift2, transpose)
+import List.Extra exposing (cartesianProduct, dropWhile, groupsOf, interweave, lift2, transpose, zip)
 import Random
 
 
@@ -279,33 +279,64 @@ errors m =
             correctResult m.multiplicand m.multiplier
 
         diff =
-            { emptyAnnotatedMultiplication | multiplicand = m.multiplicand, multiplier = m.multiplier }
+            { emptyAnnotatedMultiplication
+                | multiplicand = m.multiplicand
+                , multiplier = m.multiplier
+                , resultRows =
+                    List.map (\( a, b ) -> diffList a b) <| zip givenResRows wantedResRows
+                , upperRows =
+                    List.map (\( a, b ) -> diffList a b) <| zip givenUpRows wantedUpRows
+                , sumUpperRow =
+                    diffList m.sumUpperRow correct.sumUpperRow
+                , finalResult =
+                    diffList m.finalResult correct.finalResult
+            }
 
         ( givenResRows, wantedResRows ) =
             equalLenList [] m.resultRows correct.resultRows
-    in
-    Just
-        { diff
-            | resultRows =
-                lift2
-                    (\l r ->
-                        equalLenList 0 l r
-                            |> (\( l2, r2 ) ->
-                                    lift2
-                                        (\le re ->
-                                            if le == re then
-                                                IsOk le
 
-                                            else
-                                                IsWrong le re
-                                        )
-                                        l2
-                                        r2
-                               )
+        ( givenUpRows, wantedUpRows ) =
+            equalLenList [] m.upperRows correct.upperRows
+
+        ok =
+            List.all identity
+                [ List.all (List.all isOk) diff.resultRows
+                , List.all (List.all isOk) diff.upperRows
+                , List.all isOk diff.sumUpperRow
+                , List.all isOk diff.finalResult
+                ]
+    in
+    if ok then
+        Nothing
+
+    else
+        Just diff
+
+
+isOk : CheckedDigit -> Bool
+isOk d =
+    case d of
+        IsOk _ ->
+            True
+
+        _ ->
+            False
+
+
+diffList : List Int -> List Int -> List CheckedDigit
+diffList given wanted =
+    equalLenList 0 given wanted
+        |> (\( l2, r2 ) ->
+                List.map
+                    (\( le, re ) ->
+                        if le == re then
+                            IsOk le
+
+                        else
+                            IsWrong le re
                     )
-                    givenResRows
-                    wantedResRows
-        }
+                    (zip l2 r2)
+           )
 
 
 main : Program () Model Msg
