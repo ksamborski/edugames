@@ -46,6 +46,19 @@ calculatingResultSuite =
                         }
                 in
                 Multiplication.correctResult 83 97 |> Expect.equal result
+        , test "83 * 92" <|
+            \_ ->
+                let
+                    result =
+                        { multiplicand = 83
+                        , multiplier = 92
+                        , resultRows = [ [ 7, 4, 7, 0 ], [ 1, 6, 6 ] ]
+                        , upperRows = [ [ 7, 2 ], [ 1, 0 ] ]
+                        , sumUpperRow = [ 0, 0, 1, 0 ]
+                        , finalResult = [ 7, 6, 3, 6 ]
+                        }
+                in
+                Multiplication.correctResult 83 92 |> Expect.equal result
         , test "12 * 9" <|
             \_ ->
                 let
@@ -73,4 +86,17 @@ errorsSuite =
             "checking correct result"
           <|
             \( n, m ) -> Multiplication.errors (Multiplication.correctResult n m) |> Expect.equal Nothing
+        , test "83 * 92 (skipping 0s in the upper rows)" <|
+            \_ ->
+                let
+                    result =
+                        { multiplicand = 83
+                        , multiplier = 92
+                        , resultRows = [ [ 7, 4, 7, 0 ], [ 1, 6, 6 ] ]
+                        , upperRows = [ [ 7, 0 ], [ 1, 2 ] ]
+                        , sumUpperRow = [ 0, 0, 1, 0 ]
+                        , finalResult = [ 7, 6, 3, 6 ]
+                        }
+                in
+                Multiplication.errors result |> Expect.equal Nothing
         ]

@@ -285,7 +285,10 @@ errors m =
                 , resultRows =
                     List.map (\( a, b ) -> diffList a b) <| zip givenResRows wantedResRows
                 , upperRows =
-                    List.map (\( a, b ) -> diffList a b) <| zip givenUpRows wantedUpRows
+                    List.map
+                        (\( a, b ) -> diffList (List.filter ((/=) 0) a) (List.filter ((/=) 0) b))
+                    <|
+                        zip (transpose <| fixedRows 0 givenUpRows) (transpose <| fixedRows 0 wantedUpRows)
                 , sumUpperRow =
                     diffList m.sumUpperRow correct.sumUpperRow
                 , finalResult =
@@ -311,6 +314,15 @@ errors m =
 
     else
         Just diff
+
+
+fixedRows : a -> List (List a) -> List (List a)
+fixedRows filler lst =
+    let
+        upto =
+            Maybe.withDefault 0 <| List.maximum <| List.map List.length lst
+    in
+    List.map (\l -> List.repeat (upto - List.length l) filler ++ l) lst
 
 
 isOk : CheckedDigit -> Bool
