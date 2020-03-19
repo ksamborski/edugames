@@ -99,4 +99,17 @@ errorsSuite =
                         }
                 in
                 Multiplication.errors result |> Expect.equal Nothing
+        , fuzz
+            (Fuzz.map2 Tuple.pair
+                (Fuzz.intRange 1 100000)
+                (Fuzz.intRange 1 100000)
+            )
+            "checking incorrect result"
+          <|
+            \( n, m ) ->
+                let
+                    correct =
+                        Multiplication.correctResult n m
+                in
+                Multiplication.errors { correct | multiplicand = n + 1 } |> Expect.notEqual Nothing
         ]

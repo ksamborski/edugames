@@ -237,7 +237,7 @@ type alias AnnotatedMultiplication =
 
     -- ^ user input
     , resultRows : List (List CheckedDigit)
-    , upperRows : List (List CheckedDigit)
+    , upperCols : List (List CheckedDigit)
 
     -- ^ sums
     , sumUpperRow : List CheckedDigit
@@ -250,7 +250,7 @@ emptyAnnotatedMultiplication =
     { multiplicand = 0
     , multiplier = 0
     , resultRows = []
-    , upperRows = []
+    , upperCols = []
     , sumUpperRow = []
     , finalResult = []
     }
@@ -284,7 +284,7 @@ errors m =
                 , multiplier = m.multiplier
                 , resultRows =
                     List.map (\( a, b ) -> diffList a b) <| zip givenResRows wantedResRows
-                , upperRows =
+                , upperCols =
                     List.map
                         (\( a, b ) -> diffList (List.filter ((/=) 0) a) (List.filter ((/=) 0) b))
                     <|
@@ -304,7 +304,7 @@ errors m =
         ok =
             List.all identity
                 [ List.all (List.all isOk) diff.resultRows
-                , List.all (List.all isOk) diff.upperRows
+                , List.all (List.all isOk) diff.upperCols
                 , List.all isOk diff.sumUpperRow
                 , List.all isOk diff.finalResult
                 ]
