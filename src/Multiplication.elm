@@ -1,7 +1,10 @@
 module Multiplication exposing (Multiplication, correctResult, decimals, errors, main)
 
 import Browser
-import Html
+import Element
+import Element.Background as Background
+import Html exposing (Html)
+import Html.Attributes as Html
 import List.Extra exposing (cartesianProduct, dropWhile, groupsOf, interweave, lift2, transpose, zip)
 import Random
 
@@ -355,7 +358,30 @@ main : Program () Model Msg
 main =
     Browser.element
         { init = \_ -> ( emptyModel, Cmd.none )
-        , view = \_ -> Html.div [] []
+        , view = view
         , update = \_ m -> ( m, Cmd.none )
         , subscriptions = \_ -> Sub.none
         }
+
+
+view : Model -> Html Msg
+view m =
+    Element.layout
+        [ Background.color (Element.rgb255 220 220 220)
+        , Element.htmlAttribute <|
+            Html.style "background-image" "linear-gradient(rgba(255,255,255,.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.3) 1px, transparent 1px)"
+        , Element.htmlAttribute <|
+            Html.style "background-size" "20px 20px, 20px 20px, 20px 20px, 20px 20px"
+        , Element.htmlAttribute <|
+            Html.style "background-position" "-2px -2px, -2px -2px, -1px -1px, -1px -1px"
+        ]
+        (calculationView m)
+
+
+calculationView : Model -> Element.Element Msg
+calculationView m =
+    Element.el
+        [ Element.width Element.fill
+        , Element.height Element.fill
+        ]
+        Element.none

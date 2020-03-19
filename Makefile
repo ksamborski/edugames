@@ -1,13 +1,13 @@
 .PHONY: multiplication
 multiplication:
 	@docker-compose up -d app
-	@docker-compose exec app elm make src/Multiplication.elm --output multiplication.js --debug
+	@docker-compose exec app elm make src/Multiplication.elm --output demo/multiplication.js --debug
 
 .PHONY: multiplication_release
 multiplication_release:
 	@docker-compose up -d app
-	@docker-compose exec app elm make src/Multiplication.elm --output multiplication.js --optimize
-	@docker-compose exec app elm-minify multiplication.js
+	@docker-compose exec app elm make src/Multiplication.elm --output demo/multiplication.js --optimize
+	@docker-compose exec app elm-minify demo/multiplication.js
 
 .PHONY: format
 format:
