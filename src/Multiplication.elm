@@ -3,6 +3,7 @@ module Multiplication exposing (Multiplication, correctResult, decimals, errors,
 import Browser
 import Element
 import Element.Background as Background
+import Element.Font as Font
 import Html exposing (Html)
 import Html.Attributes as Html
 import List.Extra exposing (cartesianProduct, dropWhile, groupsOf, interweave, lift2, transpose, zip)
@@ -36,7 +37,7 @@ type Step
 
 
 type Msg
-    = Msg
+    = NewMultiplication ( Int, Int )
 
 
 emptyModel : Model
@@ -59,8 +60,23 @@ emptyMultiplication =
 
 
 multNumGenerator : Int -> Int -> Random.Generator Int
-multNumGenerator min max =
-    Random.int min max
+multNumGenerator digMin digMax =
+    let
+        numMin =
+            if digMin <= 1 then
+                0
+
+            else
+                10 ^ (digMin - 1)
+
+        numMax =
+            if digMax <= 1 then
+                0
+
+            else
+                10 ^ (digMax + 1) - 1
+    in
+    Random.int numMin numMax
 
 
 correctResult : Int -> Int -> Multiplication
@@ -357,11 +373,28 @@ diffList given wanted =
 main : Program () Model Msg
 main =
     Browser.element
-        { init = \_ -> ( emptyModel, Cmd.none )
+        { init =
+            \_ ->
+                ( emptyModel
+                , Random.generate
+                    NewMultiplication
+                    (Random.pair (multNumGenerator 1 3) (multNumGenerator 1 3))
+                )
         , view = view
-        , update = \_ m -> ( m, Cmd.none )
+        , update = update
         , subscriptions = \_ -> Sub.none
         }
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg m =
+    let
+        op =
+            m.currentOperation
+    in
+    case msg of
+        NewMultiplication ( n, n2 ) ->
+            ( { m | currentOperation = { op | multiplicand = n, multiplier = n2 } }, Cmd.none )
 
 
 view : Model -> Html Msg
@@ -384,4 +417,20 @@ calculationView m =
         [ Element.width Element.fill
         , Element.height Element.fill
         ]
-        Element.none
+    <|
+        Element.column []
+            [ textNumber (decimals m.currentOperation.multiplicand)
+            , textNumber (decimals m.currentOperation.multiplier)
+            ]
+
+
+textNumber : List Int -> Element.Element Msg
+textNumber digits =
+    Element.row [ Element.width Element.fill, Font.variant Font.tabularNumbers ] <|
+        List.map
+            (\d ->
+                Element.el [ Font.center, Element.alignRight, Element.width (Element.px 20) ] <|
+                    Element.text <|
+                        String.fromInt d
+            )
+            digits
