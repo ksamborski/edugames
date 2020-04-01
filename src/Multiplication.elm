@@ -3,7 +3,9 @@ module Multiplication exposing (Multiplication, correctResult, decimals, errors,
 import Browser
 import Element
 import Element.Background as Background
+import Element.Border as Border
 import Element.Font as Font
+import Element.Input as Input
 import Html exposing (Html)
 import Html.Attributes as Html
 import List.Extra exposing (cartesianProduct, dropWhile, groupsOf, interweave, lift2, transpose, zip)
@@ -38,6 +40,7 @@ type Step
 
 type Msg
     = NewMultiplication ( Int, Int )
+    | UpperRowInput Int Int (Maybe Int)
 
 
 emptyModel : Model
@@ -396,6 +399,9 @@ update msg m =
         NewMultiplication ( n, n2 ) ->
             ( { m | currentOperation = { op | multiplicand = n, multiplier = n2 } }, Cmd.none )
 
+        UpperRowInput _ _ _ ->
+            ( m, Cmd.none )
+
 
 view : Model -> Html Msg
 view m =
@@ -413,15 +419,61 @@ view m =
 
 calculationView : Model -> Element.Element Msg
 calculationView m =
+    let
+        multiplicandDigits =
+            decimals m.currentOperation.multiplicand
+    in
     Element.el
         [ Element.width Element.fill
         , Element.height Element.fill
         ]
     <|
         Element.column []
-            [ textNumber (decimals m.currentOperation.multiplicand)
-            , textNumber (decimals m.currentOperation.multiplier)
+            [ renderInputRow (List.length multiplicandDigits + 1) []
+            , textNumber multiplicandDigits
+            , Element.row
+                [ Border.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
+                , Border.solid
+                , Element.spacing 10
+                ]
+                [ Element.text "×"
+                , textNumber (decimals m.currentOperation.multiplier)
+                ]
+            , renderInputRow (List.length multiplicandDigits + 1) []
             ]
+
+
+renderInputRow : Int -> List (Maybe Int) -> Element.Element Msg
+renderInputRow numEl elements =
+    Element.row
+        [ Element.width Element.fill
+        , Font.variant Font.tabularNumbers
+        , Element.spacing 0
+        ]
+    <|
+        List.indexedMap
+            (\idx mn ->
+                Input.text
+                    [ Element.width (Element.px 20)
+                    , Font.center
+                    , Element.alignRight
+                    , Element.height (Element.px 20)
+                    , Element.padding 0
+                    , Element.pointer
+                    , Element.focused [ Background.color (Element.rgba 1 1 1 0.5) ]
+                    , Element.mouseOver [ Background.color (Element.rgba 1 1 1 0.25) ]
+                    , Background.color (Element.rgba 1 1 1 0)
+                    , Border.width 0
+                    ]
+                    { onChange = UpperRowInput 1 idx << Maybe.map (remainderBy 10) << String.toInt
+                    , text = Maybe.withDefault "" <| Maybe.map String.fromInt mn
+                    , placeholder = Nothing
+                    , label = Input.labelHidden ""
+                    }
+            )
+        <|
+            List.repeat (numEl - List.length elements) Nothing
+                ++ elements
 
 
 textNumber : List Int -> Element.Element Msg
