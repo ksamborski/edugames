@@ -8,14 +8,28 @@ import Element.Font as Font
 import Element.Input as Input
 import Html exposing (Html)
 import Html.Attributes as Html
-import List.Extra exposing (cartesianProduct, dropWhile, groupsOf, interweave, lift2, transpose, zip)
+import List.Extra exposing (cartesianProduct, dropWhile, getAt, groupsOf, interweave, lift2, setAt, transpose, zip)
 import Random
 
 
 type alias Model =
-    { currentOperation : Multiplication
+    { currentOperation : MultiplicationInput
     , minNumOfDigits : Int
     , maxNumOfDigits : Int
+    }
+
+
+type alias MultiplicationInput =
+    { multiplicand : Int
+    , multiplier : Int
+
+    -- ^ user input
+    , resultRows : List (List (Maybe Int))
+    , upperRows : List (List (Maybe Int))
+
+    -- ^ sums
+    , sumUpperRow : List (Maybe Int)
+    , finalResult : List (Maybe Int)
     }
 
 
@@ -41,11 +55,12 @@ type Step
 type Msg
     = NewMultiplication ( Int, Int )
     | UpperRowInput Int Int (Maybe Int)
+    | ResultRowInput Int Int (Maybe Int)
 
 
 emptyModel : Model
 emptyModel =
-    { currentOperation = emptyMultiplication
+    { currentOperation = emptyMultiplicationInput
     , minNumOfDigits = 1
     , maxNumOfDigits = 2
     }
@@ -53,6 +68,17 @@ emptyModel =
 
 emptyMultiplication : Multiplication
 emptyMultiplication =
+    { multiplicand = 0
+    , multiplier = 0
+    , resultRows = []
+    , upperRows = []
+    , sumUpperRow = []
+    , finalResult = []
+    }
+
+
+emptyMultiplicationInput : MultiplicationInput
+emptyMultiplicationInput =
     { multiplicand = 0
     , multiplier = 0
     , resultRows = []
@@ -394,13 +420,37 @@ update msg m =
     let
         op =
             m.currentOperation
+
+        multiplicandDigits =
+            decimals m.currentOperation.multiplicand
     in
     case msg of
         NewMultiplication ( n, n2 ) ->
             ( { m | currentOperation = { op | multiplicand = n, multiplier = n2 } }, Cmd.none )
 
-        UpperRowInput _ _ _ ->
-            ( m, Cmd.none )
+        UpperRowInput row col mval ->
+            let
+                newUpperRows =
+                    case getAt row op.upperRows of
+                        Just r ->
+                            setAt row (setAt col mval r) op.upperRows
+
+                        Nothing ->
+                            List.append op.upperRows [ setAt col mval <| List.repeat (List.length multiplicandDigits + 1) Nothing ]
+            in
+            ( { m | currentOperation = { op | upperRows = newUpperRows } }, Cmd.none )
+
+        ResultRowInput row col mval ->
+            let
+                newResultRows =
+                    case getAt row op.resultRows of
+                        Just r ->
+                            setAt row (setAt col mval r) op.resultRows
+
+                        Nothing ->
+                            List.append op.resultRows [ setAt col mval <| List.repeat (List.length multiplicandDigits + 1) Nothing ]
+            in
+            ( { m | currentOperation = { op | resultRows = newResultRows } }, Cmd.none )
 
 
 view : Model -> Html Msg
@@ -417,11 +467,36 @@ view m =
         (calculationView m)
 
 
+upperRowStyle : List (Element.Attribute Msg)
+upperRowStyle =
+    [ Font.size 12
+    , Font.color (Element.rgb255 200 10 10)
+    , Element.htmlAttribute (Html.style "direction" "rtl")
+    , Element.htmlAttribute (Html.style "text-align" "center")
+    , Element.htmlAttribute (Html.style "height" "20px")
+    ]
+
+
+resultRowStyle : List (Element.Attribute Msg)
+resultRowStyle =
+    [ Font.size 20
+    , Font.color (Element.rgb255 10 10 200)
+    , Element.htmlAttribute (Html.style "direction" "rtl")
+    , Element.htmlAttribute (Html.style "text-align" "center")
+    ]
+
+
 calculationView : Model -> Element.Element Msg
 calculationView m =
     let
         multiplicandDigits =
             decimals m.currentOperation.multiplicand
+
+        multiplierDigits =
+            decimals m.currentOperation.multiplier
+
+        digitsColsNum =
+            List.length multiplicandDigits + 1
     in
     Element.el
         [ Element.width Element.fill
@@ -429,43 +504,49 @@ calculationView m =
         ]
     <|
         Element.column []
-            [ renderInputRow (List.length multiplicandDigits + 1) []
-            , textNumber multiplicandDigits
-            , Element.row
-                [ Border.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
-                , Border.solid
-                , Element.spacing 10
-                ]
-                [ Element.text "×"
-                , textNumber (decimals m.currentOperation.multiplier)
-                ]
-            , renderInputRow (List.length multiplicandDigits + 1) []
-            ]
+            (renderInputRow upperRowStyle digitsColsNum [] (UpperRowInput (List.length m.currentOperation.upperRows))
+                :: List.reverse (List.indexedMap (\i r -> renderInputRow upperRowStyle digitsColsNum r <| UpperRowInput i) m.currentOperation.upperRows)
+                ++ [ textNumber multiplicandDigits
+                   , Element.row
+                        [ Border.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
+                        , Border.solid
+                        , Element.spacing 0
+                        , Element.width Element.fill
+                        ]
+                        [ Element.el [ Element.width (Element.px 20) ] <| Element.text "×"
+                        , textNumber multiplierDigits
+                        ]
+                   ]
+                ++ List.indexedMap (\i r -> renderInputRow resultRowStyle digitsColsNum r <| ResultRowInput i) m.currentOperation.resultRows
+                ++ [ renderInputRow resultRowStyle digitsColsNum [] (ResultRowInput (List.length m.currentOperation.resultRows)) ]
+            )
 
 
-renderInputRow : Int -> List (Maybe Int) -> Element.Element Msg
-renderInputRow numEl elements =
+renderInputRow : List (Element.Attribute Msg) -> Int -> List (Maybe Int) -> (Int -> Maybe Int -> Msg) -> Element.Element Msg
+renderInputRow style numEl elements action =
     Element.row
         [ Element.width Element.fill
         , Font.variant Font.tabularNumbers
         , Element.spacing 0
+        , Element.padding 0
         ]
     <|
         List.indexedMap
             (\idx mn ->
                 Input.text
-                    [ Element.width (Element.px 20)
-                    , Font.center
-                    , Element.alignRight
-                    , Element.height (Element.px 20)
-                    , Element.padding 0
-                    , Element.pointer
-                    , Element.focused [ Background.color (Element.rgba 1 1 1 0.5) ]
-                    , Element.mouseOver [ Background.color (Element.rgba 1 1 1 0.25) ]
-                    , Background.color (Element.rgba 1 1 1 0)
-                    , Border.width 0
-                    ]
-                    { onChange = UpperRowInput 1 idx << Maybe.map (remainderBy 10) << String.toInt
+                    ([ Element.width (Element.px 20)
+                     , Font.color (Element.rgb255 200 10 10)
+                     , Element.height (Element.px 20)
+                     , Element.padding 0
+                     , Element.pointer
+                     , Element.focused [ Background.color (Element.rgba 1 1 1 0.5) ]
+                     , Element.mouseOver [ Background.color (Element.rgba 1 1 1 0.25) ]
+                     , Background.color (Element.rgba 1 1 1 0)
+                     , Border.width 0
+                     ]
+                        ++ style
+                    )
+                    { onChange = action idx << Maybe.map (remainderBy 10) << String.toInt
                     , text = Maybe.withDefault "" <| Maybe.map String.fromInt mn
                     , placeholder = Nothing
                     , label = Input.labelHidden ""
