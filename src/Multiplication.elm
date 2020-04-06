@@ -16,6 +16,8 @@ type alias Model =
     { currentOperation : MultiplicationInput
     , minNumOfDigits : Int
     , maxNumOfDigits : Int
+    , checked : Bool
+    , errors : Maybe AnnotatedMultiplication
     }
 
 
@@ -56,6 +58,9 @@ type Msg
     = NewMultiplication ( Int, Int )
     | UpperRowInput Int Int (Maybe Int)
     | ResultRowInput Int Int (Maybe Int)
+    | SumUpperRowInput Int (Maybe Int)
+    | FinalResultRowInput Int (Maybe Int)
+    | CheckResult
 
 
 emptyModel : Model
@@ -63,6 +68,8 @@ emptyModel =
     { currentOperation = emptyMultiplicationInput
     , minNumOfDigits = 1
     , maxNumOfDigits = 2
+    , checked = False
+    , errors = Nothing
     }
 
 
@@ -423,10 +430,29 @@ update msg m =
 
         multiplicandDigits =
             decimals m.currentOperation.multiplicand
+
+        multiplierDigits =
+            decimals m.currentOperation.multiplier
     in
     case msg of
         NewMultiplication ( n, n2 ) ->
-            ( { m | currentOperation = { op | multiplicand = n, multiplier = n2 } }, Cmd.none )
+            let
+                emptyRow =
+                    List.repeat
+                        (List.length (decimals n) + List.length (decimals n2))
+                        Nothing
+            in
+            ( { m
+                | currentOperation =
+                    { op
+                        | multiplicand = n
+                        , multiplier = n2
+                        , sumUpperRow = emptyRow
+                        , finalResult = emptyRow
+                    }
+              }
+            , Cmd.none
+            )
 
         UpperRowInput row col mval ->
             let
@@ -448,9 +474,61 @@ update msg m =
                             setAt row (setAt col mval r) op.resultRows
 
                         Nothing ->
-                            List.append op.resultRows [ setAt col mval <| List.repeat (List.length multiplicandDigits + 1) Nothing ]
+                            List.append
+                                op.resultRows
+                                [ setAt col mval <|
+                                    List.repeat
+                                        (List.length multiplicandDigits + List.length multiplierDigits)
+                                        Nothing
+                                ]
             in
             ( { m | currentOperation = { op | resultRows = newResultRows } }, Cmd.none )
+
+        SumUpperRowInput col mval ->
+            let
+                newSumUpperRow =
+                    setAt col mval op.sumUpperRow
+            in
+            ( { m | currentOperation = { op | sumUpperRow = newSumUpperRow } }, Cmd.none )
+
+        FinalResultRowInput col mval ->
+            let
+                newFinalResult =
+                    setAt col mval op.finalResult
+            in
+            ( { m | currentOperation = { op | finalResult = newFinalResult } }, Cmd.none )
+
+        CheckResult ->
+            ( { m | checked = True, errors = errors (input2multiplication op) }, Cmd.none )
+
+
+input2multiplication : MultiplicationInput -> Multiplication
+input2multiplication input =
+    let
+        resultLength =
+            List.length input.resultRows
+
+        fixMaybes =
+            List.map (Maybe.withDefault 0)
+    in
+    { multiplicand = input.multiplicand
+    , multiplier = input.multiplier
+    , resultRows =
+        if resultLength == 1 then
+            []
+
+        else
+            List.map fixMaybes input.resultRows
+    , upperRows = List.map fixMaybes input.upperRows
+    , sumUpperRow = fixMaybes input.sumUpperRow
+    , finalResult =
+        fixMaybes <|
+            if resultLength == 1 then
+                Maybe.withDefault [] <| List.head input.resultRows
+
+            else
+                input.finalResult
+    }
 
 
 view : Model -> Html Msg
@@ -464,7 +542,11 @@ view m =
         , Element.htmlAttribute <|
             Html.style "background-position" "-2px -2px, -2px -2px, -1px -1px, -1px -1px"
         ]
-        (calculationView m)
+    <|
+        Element.row [ Element.spacing 40 ]
+            [ calculationView m
+            , operationView m
+            ]
 
 
 upperRowStyle : List (Element.Attribute Msg)
@@ -474,6 +556,7 @@ upperRowStyle =
     , Element.htmlAttribute (Html.style "direction" "rtl")
     , Element.htmlAttribute (Html.style "text-align" "center")
     , Element.htmlAttribute (Html.style "height" "20px")
+    , Element.alignRight
     ]
 
 
@@ -483,6 +566,7 @@ resultRowStyle =
     , Font.color (Element.rgb255 10 10 200)
     , Element.htmlAttribute (Html.style "direction" "rtl")
     , Element.htmlAttribute (Html.style "text-align" "center")
+    , Element.alignRight
     ]
 
 
@@ -497,6 +581,19 @@ calculationView m =
 
         digitsColsNum =
             List.length multiplicandDigits + 1
+
+        resultColsNum =
+            List.length multiplierDigits + List.length multiplicandDigits
+
+        lastLine =
+            renderInputRow
+                resultRowStyle
+                resultColsNum
+                []
+                (ResultRowInput (List.length m.currentOperation.resultRows))
+
+        moreThan1ResultRow =
+            List.length m.currentOperation.resultRows > 1
     in
     Element.el
         [ Element.width Element.fill
@@ -507,19 +604,35 @@ calculationView m =
             (renderInputRow upperRowStyle digitsColsNum [] (UpperRowInput (List.length m.currentOperation.upperRows))
                 :: List.reverse (List.indexedMap (\i r -> renderInputRow upperRowStyle digitsColsNum r <| UpperRowInput i) m.currentOperation.upperRows)
                 ++ [ textNumber multiplicandDigits
-                   , Element.row
-                        [ Border.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
-                        , Border.solid
-                        , Element.spacing 0
-                        , Element.width Element.fill
-                        ]
-                        [ Element.el [ Element.width (Element.px 20) ] <| Element.text "×"
-                        , textNumber multiplierDigits
-                        ]
+                   , operationLine "×" [ textNumber multiplierDigits ]
                    ]
-                ++ List.indexedMap (\i r -> renderInputRow resultRowStyle digitsColsNum r <| ResultRowInput i) m.currentOperation.resultRows
-                ++ [ renderInputRow resultRowStyle digitsColsNum [] (ResultRowInput (List.length m.currentOperation.resultRows)) ]
+                ++ (if moreThan1ResultRow then
+                        [ renderInputRow upperRowStyle resultColsNum m.currentOperation.sumUpperRow SumUpperRowInput ]
+
+                    else
+                        []
+                   )
+                ++ List.indexedMap (\i r -> renderInputRow resultRowStyle resultColsNum r <| ResultRowInput i) m.currentOperation.resultRows
+                ++ (if moreThan1ResultRow then
+                        [ operationLine "+" [ lastLine ]
+                        , renderInputRow resultRowStyle resultColsNum m.currentOperation.finalResult FinalResultRowInput
+                        ]
+
+                    else
+                        [ lastLine ]
+                   )
             )
+
+
+operationLine : String -> List (Element.Element Msg) -> Element.Element Msg
+operationLine operator children =
+    Element.row
+        [ Border.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
+        , Border.solid
+        , Element.spacing 0
+        , Element.width Element.fill
+        ]
+        ((Element.el [ Element.width (Element.px 20) ] <| Element.text operator) :: children)
 
 
 renderInputRow : List (Element.Attribute Msg) -> Int -> List (Maybe Int) -> (Int -> Maybe Int -> Msg) -> Element.Element Msg
@@ -567,3 +680,21 @@ textNumber digits =
                         String.fromInt d
             )
             digits
+
+
+operationView : Model -> Element.Element Msg
+operationView m =
+    Input.button
+        [ Background.color (Element.rgb255 200 200 200)
+        , Element.height (Element.px 40)
+        , Element.width (Element.px 160)
+        , Element.focused []
+        , Element.mouseOver [ Background.color (Element.rgb255 230 230 230) ]
+        , Font.center
+        , Border.width 1
+        , Border.solid
+        , Border.color (Element.rgb 1 1 1)
+        ]
+        { onPress = Just CheckResult
+        , label = Element.text "Sprawdź"
+        }
