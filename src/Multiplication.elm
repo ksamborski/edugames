@@ -338,7 +338,7 @@ errors m =
                 | multiplicand = m.multiplicand
                 , multiplier = m.multiplier
                 , resultRows =
-                    List.map (\( a, b ) -> diffList a b) <| zip givenResRows wantedResRows
+                    List.reverse <| List.map (\( a, b ) -> diffList a b) <| zip givenResRows wantedResRows
                 , upperCols =
                     List.map
                         (\( a, b ) -> diffList (List.filter ((/=) 0) a) (List.filter ((/=) 0) b))
@@ -351,7 +351,7 @@ errors m =
             }
 
         ( givenResRows, wantedResRows ) =
-            equalLenList [] m.resultRows correct.resultRows
+            equalLenList [] (List.reverse m.resultRows) correct.resultRows
 
         ( givenUpRows, wantedUpRows ) =
             equalLenList [] m.upperRows correct.upperRows
@@ -590,10 +590,27 @@ calculationView m =
                 resultRowStyle
                 resultColsNum
                 []
+                Nothing
                 (ResultRowInput (List.length m.currentOperation.resultRows))
 
         moreThan1ResultRow =
             List.length m.currentOperation.resultRows > 1
+
+        diff =
+            case m.errors of
+                Nothing ->
+                    { resultRows = List.repeat (List.length m.currentOperation.resultRows) Nothing
+                    , upperCols = List.repeat digitsColsNum Nothing
+                    , sumUpperRow = Nothing
+                    , finalResult = Nothing
+                    }
+
+                Just d ->
+                    { resultRows = List.map Just d.resultRows
+                    , upperCols = List.map Just d.upperCols
+                    , sumUpperRow = Just d.sumUpperRow
+                    , finalResult = Just d.finalResult
+                    }
     in
     Element.el
         [ Element.width Element.fill
@@ -601,21 +618,25 @@ calculationView m =
         ]
     <|
         Element.column []
-            (renderInputRow upperRowStyle digitsColsNum [] (UpperRowInput (List.length m.currentOperation.upperRows))
-                :: List.reverse (List.indexedMap (\i r -> renderInputRow upperRowStyle digitsColsNum r <| UpperRowInput i) m.currentOperation.upperRows)
+            (renderInputRow upperRowStyle digitsColsNum [] Nothing (UpperRowInput (List.length m.currentOperation.upperRows))
+                :: List.reverse (List.indexedMap (\i r -> renderInputRow upperRowStyle digitsColsNum r Nothing <| UpperRowInput i) m.currentOperation.upperRows)
                 ++ [ textNumber multiplicandDigits
                    , operationLine "×" [ textNumber multiplierDigits ]
                    ]
                 ++ (if moreThan1ResultRow then
-                        [ renderInputRow upperRowStyle resultColsNum m.currentOperation.sumUpperRow SumUpperRowInput ]
+                        [ renderInputRow upperRowStyle resultColsNum m.currentOperation.sumUpperRow diff.sumUpperRow SumUpperRowInput ]
 
                     else
                         []
                    )
-                ++ List.indexedMap (\i r -> renderInputRow resultRowStyle resultColsNum r <| ResultRowInput i) m.currentOperation.resultRows
+                ++ (List.indexedMap
+                        (\i ( r, d ) -> renderInputRow resultRowStyle resultColsNum r d <| ResultRowInput i)
+                    <|
+                        zip m.currentOperation.resultRows diff.resultRows
+                   )
                 ++ (if moreThan1ResultRow then
                         [ operationLine "+" [ lastLine ]
-                        , renderInputRow resultRowStyle resultColsNum m.currentOperation.finalResult FinalResultRowInput
+                        , renderInputRow resultRowStyle resultColsNum m.currentOperation.finalResult diff.finalResult FinalResultRowInput
                         ]
 
                     else
@@ -635,8 +656,14 @@ operationLine operator children =
         ((Element.el [ Element.width (Element.px 20) ] <| Element.text operator) :: children)
 
 
-renderInputRow : List (Element.Attribute Msg) -> Int -> List (Maybe Int) -> (Int -> Maybe Int -> Msg) -> Element.Element Msg
-renderInputRow style numEl elements action =
+renderInputRow :
+    List (Element.Attribute Msg)
+    -> Int
+    -> List (Maybe Int)
+    -> Maybe (List CheckedDigit)
+    -> (Int -> Maybe Int -> Msg)
+    -> Element.Element Msg
+renderInputRow style numEl elements mdiff action =
     Element.row
         [ Element.width Element.fill
         , Font.variant Font.tabularNumbers
@@ -645,7 +672,7 @@ renderInputRow style numEl elements action =
         ]
     <|
         List.indexedMap
-            (\idx mn ->
+            (\idx ( mn, d ) ->
                 Input.text
                     ([ Element.width (Element.px 20)
                      , Font.color (Element.rgb255 200 10 10)
@@ -654,7 +681,13 @@ renderInputRow style numEl elements action =
                      , Element.pointer
                      , Element.focused [ Background.color (Element.rgba 1 1 1 0.5) ]
                      , Element.mouseOver [ Background.color (Element.rgba 1 1 1 0.25) ]
-                     , Background.color (Element.rgba 1 1 1 0)
+                     , Background.color
+                        (if isOk d then
+                            Element.rgba 1 1 1 0
+
+                         else
+                            Element.rgba 1 0 0 0.65
+                        )
                      , Border.width 0
                      ]
                         ++ style
@@ -666,8 +699,17 @@ renderInputRow style numEl elements action =
                     }
             )
         <|
-            List.repeat (numEl - List.length elements) Nothing
-                ++ elements
+            zip
+                (List.repeat (numEl - List.length elements) Nothing
+                    ++ elements
+                )
+                (case mdiff of
+                    Nothing ->
+                        List.repeat numEl (IsOk 0)
+
+                    Just diff ->
+                        List.repeat (numEl - List.length diff) (IsOk 0) ++ diff
+                )
 
 
 textNumber : List Int -> Element.Element Msg
