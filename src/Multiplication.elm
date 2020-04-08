@@ -191,12 +191,15 @@ multiply n1 n2 =
                 runMultiplicationStep
                 { multStage = { emptyMultiplication | multiplicand = n1, multiplier = n2 }
                 , resultRow = []
-                , upperRow = []
+                , upperRow = [ 0 ]
                 , rest = 0
                 }
                 (multiplicationSteps n1 n2)
     in
-    multStage
+    { multStage
+        | resultRows = List.reverse multStage.resultRows
+        , upperRows = List.reverse multStage.upperRows
+    }
 
 
 runMultiplicationStep :
@@ -237,7 +240,7 @@ runMultiplicationStep op acc =
                     , upperRows = acc.upperRow :: mult.upperRows
                 }
             , resultRow = []
-            , upperRow = []
+            , upperRow = [ 0 ]
             , rest = 0
             }
 
@@ -292,7 +295,7 @@ type alias AnnotatedMultiplication =
 
     -- ^ user input
     , resultRows : List (List CheckedDigit)
-    , upperCols : List (List CheckedDigit)
+    , upperRows : List (List CheckedDigit)
 
     -- ^ sums
     , sumUpperRow : List CheckedDigit
@@ -305,26 +308,33 @@ emptyAnnotatedMultiplication =
     { multiplicand = 0
     , multiplier = 0
     , resultRows = []
-    , upperCols = []
+    , upperRows = []
     , sumUpperRow = []
     , finalResult = []
     }
 
 
-equalLenList : a -> List a -> List a -> ( List a, List a )
-equalLenList filler lst1 lst2 =
+equalLenList : Bool -> a -> List a -> List a -> ( List a, List a )
+equalLenList prepend filler lst1 lst2 =
     let
         lst1len =
             List.length lst1
 
         lst2len =
             List.length lst2
+
+        merge =
+            if prepend then
+                \a b -> a ++ b
+
+            else
+                \a b -> b ++ a
     in
     if lst1len > lst2len then
-        ( lst1, List.repeat (lst1len - lst2len) filler ++ lst2 )
+        ( lst1, merge (List.repeat (lst1len - lst2len) filler) lst2 )
 
     else
-        ( List.repeat (lst2len - lst1len) filler ++ lst1, lst2 )
+        ( merge (List.repeat (lst2len - lst1len) filler) lst1, lst2 )
 
 
 errors : Multiplication -> Maybe AnnotatedMultiplication
@@ -338,28 +348,30 @@ errors m =
                 | multiplicand = m.multiplicand
                 , multiplier = m.multiplier
                 , resultRows =
-                    List.reverse <| List.map (\( a, b ) -> diffList a b) <| zip givenResRows wantedResRows
-                , upperCols =
-                    List.map
-                        (\( a, b ) -> diffList (List.filter ((/=) 0) a) (List.filter ((/=) 0) b))
-                    <|
-                        zip (transpose <| fixedRows 0 givenUpRows) (transpose <| fixedRows 0 wantedUpRows)
+                    List.map (\( a, b ) -> diffList a b) <| zip givenResRows wantedResRows
+                , upperRows = transpose <| fixedRows (IsOk 0) upperCols
                 , sumUpperRow =
                     diffList m.sumUpperRow correct.sumUpperRow
                 , finalResult =
                     diffList m.finalResult correct.finalResult
             }
 
+        upperCols =
+            List.map
+                (\( a, b ) -> diffList (List.filter ((/=) 0) a) (List.filter ((/=) 0) b))
+            <|
+                zip (transpose <| fixedRows 0 givenUpRows) (transpose <| fixedRows 0 wantedUpRows)
+
         ( givenResRows, wantedResRows ) =
-            equalLenList [] (List.reverse m.resultRows) correct.resultRows
+            equalLenList False [] m.resultRows correct.resultRows
 
         ( givenUpRows, wantedUpRows ) =
-            equalLenList [] m.upperRows correct.upperRows
+            equalLenList False [] m.upperRows correct.upperRows
 
         ok =
             List.all identity
                 [ List.all (List.all isOk) diff.resultRows
-                , List.all (List.all isOk) diff.upperCols
+                , List.all (List.all isOk) diff.upperRows
                 , List.all isOk diff.sumUpperRow
                 , List.all isOk diff.finalResult
                 ]
@@ -392,7 +404,7 @@ isOk d =
 
 diffList : List Int -> List Int -> List CheckedDigit
 diffList given wanted =
-    equalLenList 0 given wanted
+    equalLenList True 0 given wanted
         |> (\( l2, r2 ) ->
                 List.map
                     (\( le, re ) ->
@@ -600,14 +612,14 @@ calculationView m =
             case m.errors of
                 Nothing ->
                     { resultRows = List.repeat (List.length m.currentOperation.resultRows) Nothing
-                    , upperCols = List.repeat digitsColsNum Nothing
+                    , upperRows = List.repeat (List.length m.currentOperation.upperRows) Nothing
                     , sumUpperRow = Nothing
                     , finalResult = Nothing
                     }
 
                 Just d ->
                     { resultRows = List.map Just d.resultRows
-                    , upperCols = List.map Just d.upperCols
+                    , upperRows = List.map Just d.upperRows
                     , sumUpperRow = Just d.sumUpperRow
                     , finalResult = Just d.finalResult
                     }
