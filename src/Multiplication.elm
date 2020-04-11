@@ -149,7 +149,7 @@ sumResults m =
                 r ->
                     r
     in
-    { result | finalResult = trFinalResult }
+    { result | finalResult = trFinalResult, sumUpperRow = List.reverse result.sumUpperRow }
 
 
 runSumStep : List Int -> ( Multiplication, Int ) -> ( Multiplication, Int )
@@ -343,6 +343,9 @@ errors m =
         correct =
             correctResult m.multiplicand m.multiplier
 
+        nonzero =
+            List.filter ((/=) 0)
+
         diff =
             { emptyAnnotatedMultiplication
                 | multiplicand = m.multiplicand
@@ -358,7 +361,13 @@ errors m =
 
         upperCols =
             List.map
-                (\( a, b ) -> diffList (List.filter ((/=) 0) a) (List.filter ((/=) 0) b))
+                (\( a, b ) ->
+                    let
+                        ( fixedA, fixedB ) =
+                            equalLenList False 0 (nonzero a) (nonzero b)
+                    in
+                    diffList fixedA fixedB
+                )
             <|
                 zip (transpose <| fixedRows 0 givenUpRows) (transpose <| fixedRows 0 wantedUpRows)
 
@@ -631,7 +640,12 @@ calculationView m =
     <|
         Element.column []
             (renderInputRow upperRowStyle digitsColsNum [] Nothing (UpperRowInput (List.length m.currentOperation.upperRows))
-                :: List.reverse (List.indexedMap (\i r -> renderInputRow upperRowStyle digitsColsNum r Nothing <| UpperRowInput i) m.currentOperation.upperRows)
+                :: List.reverse
+                    (List.indexedMap
+                        (\i ( r, d ) -> renderInputRow upperRowStyle digitsColsNum r d <| UpperRowInput i)
+                     <|
+                        zip m.currentOperation.upperRows diff.upperRows
+                    )
                 ++ [ textNumber multiplicandDigits
                    , operationLine "×" [ textNumber multiplierDigits ]
                    ]

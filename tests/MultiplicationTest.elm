@@ -39,8 +39,8 @@ calculatingResultSuite =
                     result =
                         { multiplicand = 83
                         , multiplier = 97
-                        , resultRows = [ [ 7, 4, 7, 0 ], [ 5, 8, 1 ] ]
-                        , upperRows = [ [ 7, 2 ], [ 5, 2 ] ]
+                        , resultRows = [ [ 5, 8, 1 ], [ 7, 4, 7, 0 ] ]
+                        , upperRows = [ [ 5, 2, 0 ], [ 7, 2, 0 ] ]
                         , sumUpperRow = [ 0, 1, 1, 0 ]
                         , finalResult = [ 8, 0, 5, 1 ]
                         }
@@ -52,9 +52,9 @@ calculatingResultSuite =
                     result =
                         { multiplicand = 83
                         , multiplier = 92
-                        , resultRows = [ [ 7, 4, 7, 0 ], [ 1, 6, 6 ] ]
-                        , upperRows = [ [ 7, 2 ], [ 1, 0 ] ]
-                        , sumUpperRow = [ 0, 0, 1, 0 ]
+                        , resultRows = [ [ 1, 6, 6 ], [ 7, 4, 7, 0 ] ]
+                        , upperRows = [ [ 1, 0, 0 ], [ 7, 2, 0 ] ]
+                        , sumUpperRow = [ 0, 1, 0, 0 ]
                         , finalResult = [ 7, 6, 3, 6 ]
                         }
                 in
@@ -66,7 +66,7 @@ calculatingResultSuite =
                         { multiplicand = 12
                         , multiplier = 9
                         , resultRows = [ [ 1, 0, 8 ] ]
-                        , upperRows = [ [ 1, 1 ] ]
+                        , upperRows = [ [ 1, 1, 0 ] ]
                         , sumUpperRow = [ 0, 0, 0 ]
                         , finalResult = [ 1, 0, 8 ]
                         }
@@ -92,9 +92,9 @@ errorsSuite =
                     result =
                         { multiplicand = 83
                         , multiplier = 92
-                        , resultRows = [ [ 7, 4, 7, 0 ], [ 1, 6, 6 ] ]
-                        , upperRows = [ [ 7, 0 ], [ 1, 2 ] ]
-                        , sumUpperRow = [ 0, 0, 1, 0 ]
+                        , resultRows = [ [ 1, 6, 6 ], [ 7, 4, 7, 0 ] ]
+                        , upperRows = [ [ 1, 2 ], [ 7, 0 ] ]
+                        , sumUpperRow = [ 0, 1, 0, 0 ]
                         , finalResult = [ 7, 6, 3, 6 ]
                         }
                 in
