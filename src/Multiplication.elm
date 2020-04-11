@@ -337,14 +337,16 @@ equalLenList prepend filler lst1 lst2 =
         ( merge (List.repeat (lst2len - lst1len) filler) lst1, lst2 )
 
 
+nonzero : List number -> List number
+nonzero =
+    List.filter ((/=) 0)
+
+
 errors : Multiplication -> Maybe AnnotatedMultiplication
 errors m =
     let
         correct =
             correctResult m.multiplicand m.multiplier
-
-        nonzero =
-            List.filter ((/=) 0)
 
         diff =
             { emptyAnnotatedMultiplication
@@ -520,7 +522,17 @@ update msg m =
             ( { m | currentOperation = { op | finalResult = newFinalResult } }, Cmd.none )
 
         CheckResult ->
-            ( { m | checked = True, errors = errors (input2multiplication op) }, Cmd.none )
+            let
+                nonzeroUpperRows =
+                    transpose <|
+                        fixedRows Nothing <|
+                            List.map (List.filter (\mv -> mv /= Just 0 && mv /= Nothing)) <|
+                                transpose op.upperRows
+
+                newOp =
+                    { op | upperRows = nonzeroUpperRows }
+            in
+            ( { m | currentOperation = newOp, checked = True, errors = errors (input2multiplication newOp) }, Cmd.none )
 
 
 input2multiplication : MultiplicationInput -> Multiplication
