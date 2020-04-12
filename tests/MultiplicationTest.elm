@@ -2,7 +2,7 @@ module MultiplicationTest exposing (calculatingResultSuite, decimalsSuite, error
 
 import Expect exposing (Expectation)
 import Fuzz
-import Multiplication
+import Multiplication exposing (CheckedDigit(..))
 import Test exposing (..)
 
 
@@ -41,7 +41,7 @@ calculatingResultSuite =
                         , multiplier = 97
                         , resultRows = [ [ 5, 8, 1 ], [ 7, 4, 7, 0 ] ]
                         , upperRows = [ [ 5, 2, 0 ], [ 7, 2, 0 ] ]
-                        , sumUpperRow = [ 0, 1, 1, 0 ]
+                        , sumUpperRow = [ 0, 1, 1, 0, 0 ]
                         , finalResult = [ 8, 0, 5, 1 ]
                         }
                 in
@@ -54,7 +54,7 @@ calculatingResultSuite =
                         , multiplier = 92
                         , resultRows = [ [ 1, 6, 6 ], [ 7, 4, 7, 0 ] ]
                         , upperRows = [ [ 1, 0, 0 ], [ 7, 2, 0 ] ]
-                        , sumUpperRow = [ 0, 1, 0, 0 ]
+                        , sumUpperRow = [ 0, 0, 1, 0, 0 ]
                         , finalResult = [ 7, 6, 3, 6 ]
                         }
                 in
@@ -67,7 +67,7 @@ calculatingResultSuite =
                         , multiplier = 9
                         , resultRows = [ [ 1, 0, 8 ] ]
                         , upperRows = [ [ 1, 1, 0 ] ]
-                        , sumUpperRow = [ 0, 0, 0 ]
+                        , sumUpperRow = [ 0, 0, 0, 0 ]
                         , finalResult = [ 1, 0, 8 ]
                         }
                 in
@@ -93,7 +93,7 @@ errorsSuite =
                         { multiplicand = 83
                         , multiplier = 92
                         , resultRows = [ [ 1, 6, 6 ], [ 7, 4, 7, 0 ] ]
-                        , upperRows = [ [ 1, 2 ], [ 7, 0 ] ]
+                        , upperRows = [ [ 1, 2, 0 ], [ 7, 0, 0 ] ]
                         , sumUpperRow = [ 0, 1, 0, 0 ]
                         , finalResult = [ 7, 6, 3, 6 ]
                         }
@@ -112,4 +112,94 @@ errorsSuite =
                         Multiplication.correctResult n m
                 in
                 Multiplication.errors { correct | multiplicand = n + 1 } |> Expect.notEqual Nothing
+        , test "83 * 92 empty upper rows" <|
+            \_ ->
+                let
+                    result =
+                        { multiplicand = 83
+                        , multiplier = 92
+                        , resultRows = [ [ 1, 6, 6 ], [ 7, 4, 7, 0 ] ]
+                        , upperRows = []
+                        , sumUpperRow = [ 0, 1, 0, 0 ]
+                        , finalResult = [ 7, 6, 3, 6 ]
+                        }
+                in
+                Multiplication.errors result |> Expect.notEqual Nothing
+        , test "1724 * 5622" <|
+            \_ ->
+                let
+                    result =
+                        { multiplicand = 1724
+                        , multiplier = 5622
+                        , resultRows =
+                            [ [ 3, 4, 4, 8 ]
+                            , [ 3, 4, 4, 8, 0 ]
+                            , [ 1, 0, 3, 4, 4, 0, 0 ]
+                            , [ 8, 6, 2, 0, 0, 0, 0 ]
+                            ]
+                        , upperRows =
+                            [ [ 1, 1, 1, 2, 0 ]
+                            , [ 0, 1, 1, 2, 0 ]
+                            , [ 0, 4, 0, 0, 0 ]
+                            , [ 0, 3, 0, 0, 0 ]
+                            ]
+                        , sumUpperRow = [ 0, 0, 1, 1, 1, 0, 0 ]
+                        , finalResult = [ 9, 6, 9, 2, 3, 2, 8 ]
+                        }
+                in
+                Multiplication.errors result |> Expect.equal Nothing
+        , test "1724 * 5622 empty upper rows" <|
+            \_ ->
+                let
+                    result =
+                        { multiplicand = 1724
+                        , multiplier = 5622
+                        , resultRows =
+                            [ [ 3, 4, 4, 8 ]
+                            , [ 3, 4, 4, 8, 0 ]
+                            , [ 1, 0, 3, 4, 4, 0, 0 ]
+                            , [ 8, 6, 2, 0, 0, 0, 0 ]
+                            ]
+                        , upperRows = []
+                        , sumUpperRow = [ 0, 0, 1, 1, 1, 0, 0 ]
+                        , finalResult = [ 9, 6, 9, 2, 3, 2, 8 ]
+                        }
+                in
+                Multiplication.errors result
+                    |> Maybe.map .upperRows
+                    |> Expect.equal
+                        (Just
+                            [ [ IsWrong 0 1, IsWrong 0 1, IsWrong 0 1, IsWrong 0 2, IsOk 0 ]
+                            , [ IsOk 0, IsWrong 0 1, IsWrong 0 1, IsWrong 0 2, IsOk 0 ]
+                            , [ IsOk 0, IsWrong 0 4, IsOk 0, IsOk 0, IsOk 0 ]
+                            , [ IsOk 0, IsWrong 0 3, IsOk 0, IsOk 0, IsOk 0 ]
+                            ]
+                        )
+        , test "1724 * 5622 partial first upper row" <|
+            \_ ->
+                let
+                    result =
+                        { multiplicand = 1724
+                        , multiplier = 5622
+                        , resultRows =
+                            [ [ 3, 4, 4, 8 ]
+                            , [ 3, 4, 4, 8, 0 ]
+                            , [ 1, 0, 3, 4, 4, 0, 0 ]
+                            , [ 8, 6, 2, 0, 0, 0, 0 ]
+                            ]
+                        , upperRows = [ [ 0, 0, 0, 2, 0 ] ]
+                        , sumUpperRow = [ 0, 0, 1, 1, 1, 0, 0 ]
+                        , finalResult = [ 9, 6, 9, 2, 3, 2, 8 ]
+                        }
+                in
+                Multiplication.errors result
+                    |> Maybe.map .upperRows
+                    |> Expect.equal
+                        (Just
+                            [ [ IsWrong 0 1, IsWrong 0 1, IsWrong 0 1, IsOk 2, IsOk 0 ]
+                            , [ IsOk 0, IsWrong 0 1, IsWrong 0 1, IsWrong 0 2, IsOk 0 ]
+                            , [ IsOk 0, IsWrong 0 4, IsOk 0, IsOk 0, IsOk 0 ]
+                            , [ IsOk 0, IsWrong 0 3, IsOk 0, IsOk 0, IsOk 0 ]
+                            ]
+                        )
         ]

@@ -1,4 +1,4 @@
-module Multiplication exposing (Multiplication, correctResult, decimals, errors, main)
+module Multiplication exposing (CheckedDigit(..), Multiplication, correctResult, decimals, errors, main)
 
 import Browser
 import Element
@@ -149,14 +149,15 @@ sumResults m =
                 r ->
                     r
     in
-    { result | finalResult = trFinalResult, sumUpperRow = List.reverse result.sumUpperRow }
+    { result | finalResult = trFinalResult, sumUpperRow = result.sumUpperRow ++ [ 0 ] }
 
 
 runSumStep : List Int -> ( Multiplication, Int ) -> ( Multiplication, Int )
 runSumStep nums ( acc, rest ) =
     let
         s =
-            List.sum nums + rest
+            List.sum nums
+                + rest
 
         rmd =
             s // 10
@@ -171,12 +172,7 @@ runSumStep nums ( acc, rest ) =
 
         _ ->
             ( { acc
-                | sumUpperRow =
-                    if rmd /= 0 then
-                        rmd :: acc.sumUpperRow
-
-                    else
-                        0 :: acc.sumUpperRow
+                | sumUpperRow = rmd :: acc.sumUpperRow
                 , finalResult = remainderBy 10 s :: acc.finalResult
               }
             , rmd
@@ -342,6 +338,11 @@ nonzero =
     List.filter ((/=) 0)
 
 
+maxColLen : List (List a) -> Int
+maxColLen lst =
+    Maybe.withDefault 1 <| List.maximum <| List.map List.length lst
+
+
 errors : Multiplication -> Maybe AnnotatedMultiplication
 errors m =
     let
@@ -353,12 +354,12 @@ errors m =
                 | multiplicand = m.multiplicand
                 , multiplier = m.multiplier
                 , resultRows =
-                    List.map (\( a, b ) -> diffList a b) <| zip givenResRows wantedResRows
-                , upperRows = transpose <| fixedRows (IsOk 0) upperCols
+                    List.map (\( a, b ) -> diffList True a b) <| zip givenResRows wantedResRows
+                , upperRows = transpose <| fixedRows False 1 (IsOk 0) upperCols
                 , sumUpperRow =
-                    diffList m.sumUpperRow correct.sumUpperRow
+                    diffList True m.sumUpperRow correct.sumUpperRow
                 , finalResult =
-                    diffList m.finalResult correct.finalResult
+                    diffList True m.finalResult correct.finalResult
             }
 
         upperCols =
@@ -368,10 +369,12 @@ errors m =
                         ( fixedA, fixedB ) =
                             equalLenList False 0 (nonzero a) (nonzero b)
                     in
-                    diffList fixedA fixedB
+                    diffList False fixedA fixedB
                 )
             <|
-                zip (transpose <| fixedRows 0 givenUpRows) (transpose <| fixedRows 0 wantedUpRows)
+                zip
+                    (transpose <| fixedRows True (maxColLen wantedUpRows) 0 givenUpRows)
+                    (transpose <| fixedRows True (maxColLen givenUpRows) 0 wantedUpRows)
 
         ( givenResRows, wantedResRows ) =
             equalLenList False [] m.resultRows correct.resultRows
@@ -394,13 +397,20 @@ errors m =
         Just diff
 
 
-fixedRows : a -> List (List a) -> List (List a)
-fixedRows filler lst =
+fixedRows : Bool -> Int -> a -> List (List a) -> List (List a)
+fixedRows prepend min filler lst =
     let
         upto =
-            Maybe.withDefault 0 <| List.maximum <| List.map List.length lst
+            max min <|
+                Maybe.withDefault min <|
+                    List.maximum <|
+                        List.map List.length lst
     in
-    List.map (\l -> List.repeat (upto - List.length l) filler ++ l) lst
+    if prepend then
+        List.map (\l -> List.repeat (upto - List.length l) filler ++ l) lst
+
+    else
+        List.map (\l -> l ++ List.repeat (upto - List.length l) filler) lst
 
 
 isOk : CheckedDigit -> Bool
@@ -413,9 +423,9 @@ isOk d =
             False
 
 
-diffList : List Int -> List Int -> List CheckedDigit
-diffList given wanted =
-    equalLenList True 0 given wanted
+diffList : Bool -> List Int -> List Int -> List CheckedDigit
+diffList prepend given wanted =
+    equalLenList prepend 0 given wanted
         |> (\( l2, r2 ) ->
                 List.map
                     (\( le, re ) ->
@@ -525,7 +535,7 @@ update msg m =
             let
                 nonzeroUpperRows =
                     transpose <|
-                        fixedRows Nothing <|
+                        fixedRows True 0 Nothing <|
                             List.map (List.filter (\mv -> mv /= Just 0 && mv /= Nothing)) <|
                                 transpose op.upperRows
 
@@ -603,6 +613,22 @@ resultRowStyle =
     ]
 
 
+zipWithDefault : a -> b -> List a -> List b -> List ( a, b )
+zipWithDefault defa defb a b =
+    let
+        aLen =
+            List.length a
+
+        bLen =
+            List.length b
+    in
+    if bLen > aLen then
+        zip (a ++ List.repeat (bLen - aLen) defa) b
+
+    else
+        zip a (b ++ List.repeat (aLen - bLen) defb)
+
+
 calculationView : Model -> Element.Element Msg
 calculationView m =
     let
@@ -627,7 +653,10 @@ calculationView m =
                 (ResultRowInput (List.length m.currentOperation.resultRows))
 
         moreThan1ResultRow =
-            List.length m.currentOperation.resultRows > 1
+            List.length m.currentOperation.resultRows
+                > 1
+                || List.length diff.resultRows
+                > 1
 
         diff =
             case m.errors of
@@ -656,7 +685,7 @@ calculationView m =
                     (List.indexedMap
                         (\i ( r, d ) -> renderInputRow upperRowStyle digitsColsNum r d <| UpperRowInput i)
                      <|
-                        zip m.currentOperation.upperRows diff.upperRows
+                        zipWithDefault [] Nothing m.currentOperation.upperRows diff.upperRows
                     )
                 ++ [ textNumber multiplicandDigits
                    , operationLine "×" [ textNumber multiplierDigits ]
@@ -670,7 +699,7 @@ calculationView m =
                 ++ (List.indexedMap
                         (\i ( r, d ) -> renderInputRow resultRowStyle resultColsNum r d <| ResultRowInput i)
                     <|
-                        zip m.currentOperation.resultRows diff.resultRows
+                        zipWithDefault [] Nothing m.currentOperation.resultRows diff.resultRows
                    )
                 ++ (if moreThan1ResultRow then
                         [ operationLine "+" [ lastLine ]
