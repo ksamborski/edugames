@@ -1,5 +1,6 @@
 module Multiplication exposing (CheckedDigit(..), Multiplication, correctResult, decimals, errors, main)
 
+import Animator
 import Browser
 import Element
 import Element.Background as Background
@@ -10,6 +11,7 @@ import Html exposing (Html)
 import Html.Attributes as Html
 import List.Extra exposing (cartesianProduct, dropWhile, getAt, groupsOf, interweave, lift2, setAt, transpose, zip)
 import Random
+import Time exposing (Posix)
 
 
 type alias Model =
@@ -17,7 +19,7 @@ type alias Model =
     , minNumOfDigits : Int
     , maxNumOfDigits : Int
     , checked : Bool
-    , errors : Maybe AnnotatedMultiplication
+    , errors : Animator.Timeline (Maybe AnnotatedMultiplication)
     }
 
 
@@ -61,6 +63,7 @@ type Msg
     | SumUpperRowInput Int (Maybe Int)
     | FinalResultRowInput Int (Maybe Int)
     | CheckResult
+    | AnimationTick Posix
 
 
 emptyModel : Model
@@ -69,7 +72,7 @@ emptyModel =
     , minNumOfDigits = 1
     , maxNumOfDigits = 2
     , checked = False
-    , errors = Nothing
+    , errors = Animator.init Nothing
     }
 
 
@@ -451,7 +454,7 @@ main =
                 )
         , view = view
         , update = update
-        , subscriptions = \_ -> Sub.none
+        , subscriptions = \m -> Animator.toSubscription AnimationTick m animator
         }
 
 
@@ -542,7 +545,38 @@ update msg m =
                 newOp =
                     { op | upperRows = nonzeroUpperRows }
             in
-            ( { m | currentOperation = newOp, checked = True, errors = errors (input2multiplication newOp) }, Cmd.none )
+            ( { m
+                | currentOperation = newOp
+                , checked = True
+                , errors =
+                    Animator.interrupt
+                        [ Animator.event Animator.immediately (errors (input2multiplication newOp))
+                        , Animator.wait (Animator.millis 950)
+                        , Animator.event Animator.immediately Nothing
+                        ]
+                        m.errors
+              }
+            , Cmd.none
+            )
+
+        AnimationTick newTime ->
+            ( Animator.update newTime animator m, Cmd.none )
+
+
+animator : Animator.Animator Model
+animator =
+    Animator.animator
+        |> Animator.watchingWith
+            .errors
+            (\newErrors m -> { m | errors = newErrors })
+            (\merrors ->
+                case merrors of
+                    Nothing ->
+                        False
+
+                    _ ->
+                        True
+            )
 
 
 input2multiplication : MultiplicationInput -> Multiplication
@@ -644,8 +678,11 @@ calculationView m =
         resultColsNum =
             List.length multiplierDigits + List.length multiplicandDigits
 
+        animatedInputRow =
+            renderInputRow m.errors
+
         lastLine =
-            renderInputRow
+            animatedInputRow
                 resultRowStyle
                 resultColsNum
                 []
@@ -659,7 +696,7 @@ calculationView m =
                 > 1
 
         diff =
-            case m.errors of
+            case Animator.current m.errors of
                 Nothing ->
                     { resultRows = List.repeat (List.length m.currentOperation.resultRows) Nothing
                     , upperRows = List.repeat (List.length m.currentOperation.upperRows) Nothing
@@ -680,10 +717,10 @@ calculationView m =
         ]
     <|
         Element.column []
-            (renderInputRow upperRowStyle digitsColsNum [] Nothing (UpperRowInput (List.length m.currentOperation.upperRows))
+            (animatedInputRow upperRowStyle digitsColsNum [] Nothing (UpperRowInput (List.length m.currentOperation.upperRows))
                 :: List.reverse
                     (List.indexedMap
-                        (\i ( r, d ) -> renderInputRow upperRowStyle digitsColsNum r d <| UpperRowInput i)
+                        (\i ( r, d ) -> animatedInputRow upperRowStyle digitsColsNum r d <| UpperRowInput i)
                      <|
                         zipWithDefault [] Nothing m.currentOperation.upperRows diff.upperRows
                     )
@@ -691,19 +728,19 @@ calculationView m =
                    , operationLine "×" [ textNumber multiplierDigits ]
                    ]
                 ++ (if moreThan1ResultRow then
-                        [ renderInputRow upperRowStyle resultColsNum m.currentOperation.sumUpperRow diff.sumUpperRow SumUpperRowInput ]
+                        [ animatedInputRow upperRowStyle resultColsNum m.currentOperation.sumUpperRow diff.sumUpperRow SumUpperRowInput ]
 
                     else
                         []
                    )
                 ++ (List.indexedMap
-                        (\i ( r, d ) -> renderInputRow resultRowStyle resultColsNum r d <| ResultRowInput i)
+                        (\i ( r, d ) -> animatedInputRow resultRowStyle resultColsNum r d <| ResultRowInput i)
                     <|
                         zipWithDefault [] Nothing m.currentOperation.resultRows diff.resultRows
                    )
                 ++ (if moreThan1ResultRow then
                         [ operationLine "+" [ lastLine ]
-                        , renderInputRow resultRowStyle resultColsNum m.currentOperation.finalResult diff.finalResult FinalResultRowInput
+                        , animatedInputRow resultRowStyle resultColsNum m.currentOperation.finalResult diff.finalResult FinalResultRowInput
                         ]
 
                     else
@@ -724,13 +761,14 @@ operationLine operator children =
 
 
 renderInputRow :
-    List (Element.Attribute Msg)
+    Animator.Timeline state
+    -> List (Element.Attribute Msg)
     -> Int
     -> List (Maybe Int)
     -> Maybe (List CheckedDigit)
     -> (Int -> Maybe Int -> Msg)
     -> Element.Element Msg
-renderInputRow style numEl elements mdiff action =
+renderInputRow timeline style numEl elements mdiff action =
     Element.row
         [ Element.width Element.fill
         , Font.variant Font.tabularNumbers
@@ -753,7 +791,10 @@ renderInputRow style numEl elements mdiff action =
                             Element.rgba 1 1 1 0
 
                          else
-                            Element.rgba 1 0 0 0.65
+                            Element.rgba 1 0 0 <|
+                                Animator.linear timeline <|
+                                    \_ ->
+                                        Animator.wave 0 0.65 |> Animator.loop (Animator.millis 900)
                         )
                      , Border.width 0
                      ]
