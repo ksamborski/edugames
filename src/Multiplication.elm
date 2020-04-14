@@ -7,6 +7,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
+import Element.Keyed as Keyed
 import Html exposing (Html)
 import Html.Attributes as Html
 import List.Extra exposing (cartesianProduct, dropWhile, getAt, groupsOf, interweave, last, lift2, setAt, transpose, zip)
@@ -681,6 +682,7 @@ calculationView m =
 
         lastLine =
             animatedInputRow
+                "newresultrow"
                 resultRowStyle
                 resultColsNum
                 []
@@ -715,10 +717,10 @@ calculationView m =
         ]
     <|
         Element.column []
-            (animatedInputRow upperRowStyle digitsColsNum [] Nothing (UpperRowInput (List.length m.currentOperation.upperRows))
+            (animatedInputRow "newupperrow" upperRowStyle digitsColsNum [] Nothing (UpperRowInput (List.length m.currentOperation.upperRows))
                 :: List.reverse
                     (List.indexedMap
-                        (\i ( r, d ) -> animatedInputRow upperRowStyle digitsColsNum r d <| UpperRowInput i)
+                        (\i ( r, d ) -> animatedInputRow "upperrow" upperRowStyle digitsColsNum r d <| UpperRowInput i)
                      <|
                         zipWithDefault [] Nothing m.currentOperation.upperRows diff.upperRows
                     )
@@ -726,19 +728,19 @@ calculationView m =
                    , operationLine "×" [ textNumber multiplierDigits ]
                    ]
                 ++ (if moreThan1ResultRow then
-                        [ animatedInputRow upperRowStyle resultColsNum m.currentOperation.sumUpperRow diff.sumUpperRow SumUpperRowInput ]
+                        [ animatedInputRow "sumupperrow" upperRowStyle resultColsNum m.currentOperation.sumUpperRow diff.sumUpperRow SumUpperRowInput ]
 
                     else
                         []
                    )
                 ++ (List.indexedMap
-                        (\i ( r, d ) -> animatedInputRow resultRowStyle resultColsNum r d <| ResultRowInput i)
+                        (\i ( r, d ) -> animatedInputRow "resultrow" resultRowStyle resultColsNum r d <| ResultRowInput i)
                     <|
                         zipWithDefault [] Nothing m.currentOperation.resultRows diff.resultRows
                    )
                 ++ (if moreThan1ResultRow then
                         [ operationLine "+" [ lastLine ]
-                        , animatedInputRow resultRowStyle resultColsNum m.currentOperation.finalResult diff.finalResult FinalResultRowInput
+                        , animatedInputRow "finalrow" resultRowStyle resultColsNum m.currentOperation.finalResult diff.finalResult FinalResultRowInput
                         ]
 
                     else
@@ -760,14 +762,15 @@ operationLine operator children =
 
 renderInputRow :
     Animator.Timeline state
+    -> String
     -> List (Element.Attribute Msg)
     -> Int
     -> List (Maybe Int)
     -> Maybe (List CheckedDigit)
     -> (Int -> Maybe Int -> Msg)
     -> Element.Element Msg
-renderInputRow timeline style numEl elements mdiff action =
-    Element.row
+renderInputRow timeline name style numEl elements mdiff action =
+    Keyed.row
         [ Element.width Element.fill
         , Font.variant Font.tabularNumbers
         , Element.spacing 0
@@ -776,7 +779,8 @@ renderInputRow timeline style numEl elements mdiff action =
     <|
         List.indexedMap
             (\idx ( mn, d ) ->
-                Input.text
+                ( name ++ String.fromInt numEl ++ "," ++ String.fromInt idx
+                , Input.text
                     ([ Element.width (Element.px 20)
                      , Font.color (Element.rgb255 200 10 10)
                      , Element.height (Element.px 20)
@@ -803,6 +807,7 @@ renderInputRow timeline style numEl elements mdiff action =
                     , placeholder = Nothing
                     , label = Input.labelHidden ""
                     }
+                )
             )
         <|
             zip
