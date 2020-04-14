@@ -10,6 +10,8 @@ import Element.Input as Input
 import Element.Keyed as Keyed
 import Html exposing (Html)
 import Html.Attributes as Html
+import Keyboard exposing (Key(..))
+import Keyboard.Events as Keyboard
 import List.Extra exposing (cartesianProduct, dropWhile, getAt, groupsOf, interweave, last, lift2, setAt, transpose, zip)
 import Random
 import Time exposing (Posix)
@@ -65,6 +67,10 @@ type Msg
     | FinalResultRowInput Int (Maybe Int)
     | CheckResult
     | AnimationTick Posix
+    | FocusUp
+    | FocusDown
+    | FocusLeft
+    | FocusRight
 
 
 emptyModel : Model
@@ -566,6 +572,18 @@ update msg m =
         AnimationTick newTime ->
             ( Animator.update newTime animator m, Cmd.none )
 
+        FocusUp ->
+            ( m, Cmd.none )
+
+        FocusDown ->
+            ( m, Cmd.none )
+
+        FocusLeft ->
+            ( m, Cmd.none )
+
+        FocusRight ->
+            ( m, Cmd.none )
+
 
 animator : Animator.Animator Model
 animator =
@@ -788,6 +806,14 @@ renderInputRow timeline name style numEl elements mdiff action =
                      , Element.pointer
                      , Element.focused [ Background.color (Element.rgba 1 1 1 0.5) ]
                      , Element.mouseOver [ Background.color (Element.rgba 1 1 1 0.25) ]
+                     , Element.htmlAttribute
+                        (Keyboard.on Keyboard.Keydown
+                            [ ( ArrowUp, FocusUp )
+                            , ( ArrowDown, FocusDown )
+                            , ( ArrowLeft, FocusLeft )
+                            , ( ArrowRight, FocusRight )
+                            ]
+                        )
                      , Background.color
                         (if isOk d then
                             Element.rgba 1 1 1 0
