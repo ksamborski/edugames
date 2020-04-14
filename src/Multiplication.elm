@@ -9,7 +9,7 @@ import Element.Font as Font
 import Element.Input as Input
 import Html exposing (Html)
 import Html.Attributes as Html
-import List.Extra exposing (cartesianProduct, dropWhile, getAt, groupsOf, interweave, lift2, setAt, transpose, zip)
+import List.Extra exposing (cartesianProduct, dropWhile, getAt, groupsOf, interweave, last, lift2, setAt, transpose, zip)
 import Random
 import Time exposing (Posix)
 
@@ -113,7 +113,7 @@ multNumGenerator digMin digMax =
                 0
 
             else
-                10 ^ (digMax + 1) - 1
+                10 ^ digMax - 1
     in
     Random.int numMin numMax
 
@@ -450,7 +450,10 @@ main =
                 ( emptyModel
                 , Random.generate
                     NewMultiplication
-                    (Random.pair (multNumGenerator 1 3) (multNumGenerator 1 3))
+                    (Random.pair
+                        (multNumGenerator emptyModel.minNumOfDigits emptyModel.maxNumOfDigits)
+                        (multNumGenerator emptyModel.minNumOfDigits emptyModel.maxNumOfDigits)
+                    )
                 )
         , view = view
         , update = update
@@ -590,12 +593,7 @@ input2multiplication input =
     in
     { multiplicand = input.multiplicand
     , multiplier = input.multiplier
-    , resultRows =
-        if resultLength == 1 then
-            []
-
-        else
-            List.map fixMaybes input.resultRows
+    , resultRows = List.map fixMaybes input.resultRows
     , upperRows = List.map fixMaybes input.upperRows
     , sumUpperRow = fixMaybes input.sumUpperRow
     , finalResult =
