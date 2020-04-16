@@ -2,9 +2,11 @@ module Multiplication exposing (CheckedDigit(..), Multiplication, correctResult,
 
 import Animator
 import Browser
+import Browser.Dom as Dom
 import Element
 import Element.Background as Background
 import Element.Border as Border
+import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
 import Element.Keyed as Keyed
@@ -14,6 +16,7 @@ import Keyboard exposing (Key(..))
 import Keyboard.Events as Keyboard
 import List.Extra exposing (cartesianProduct, dropWhile, getAt, groupsOf, interweave, last, lift2, setAt, transpose, zip)
 import Random
+import Task
 import Time exposing (Posix)
 
 
@@ -84,6 +87,75 @@ type Msg
     | CheckResult
     | AnimationTick Posix
     | Focus FocusDirection
+    | ForceFocus ColId
+    | NoOp
+
+
+type RowId
+    = UpperRow Int
+    | SumUpperRow
+    | ResultRow Int
+    | FinalRow
+
+
+type ColId
+    = ColId RowId Int
+
+
+rowId : RowId -> String
+rowId rid =
+    case rid of
+        UpperRow i ->
+            "upperrow" ++ String.fromInt i
+
+        SumUpperRow ->
+            "sumupperrow"
+
+        ResultRow i ->
+            "resultrow" ++ String.fromInt i
+
+        FinalRow ->
+            "final"
+
+
+colId : ColId -> String
+colId (ColId rid i) =
+    rowId rid ++ "," ++ String.fromInt i
+
+
+focused2ColId : Focused -> ColId
+focused2ColId f =
+    case f of
+        FocusedUpperRow x y ->
+            ColId (UpperRow y) x
+
+        FocusedResultRow x y ->
+            ColId (ResultRow y) x
+
+        FocusedSumUpperRow x ->
+            ColId SumUpperRow x
+
+        FocusedFinalRow x ->
+            ColId FinalRow x
+
+        FocusedNothing ->
+            ColId (ResultRow 0) 0
+
+
+colId2focused : ColId -> Focused
+colId2focused (ColId rid x) =
+    case rid of
+        UpperRow y ->
+            FocusedUpperRow x y
+
+        SumUpperRow ->
+            FocusedSumUpperRow x
+
+        ResultRow y ->
+            FocusedResultRow x y
+
+        FinalRow ->
+            FocusedFinalRow x
 
 
 emptyModel : Model
@@ -497,10 +569,14 @@ update msg m =
     case msg of
         NewMultiplication ( n, n2 ) ->
             let
+                rowLen =
+                    List.length (decimals n) + List.length (decimals n2)
+
                 emptyRow =
-                    List.repeat
-                        (List.length (decimals n) + List.length (decimals n2))
-                        Nothing
+                    List.repeat rowLen Nothing
+
+                newFocus =
+                    FocusedResultRow (rowLen - 1) 0
             in
             ( { m
                 | currentOperation =
@@ -510,8 +586,9 @@ update msg m =
                         , sumUpperRow = emptyRow
                         , finalResult = emptyRow
                     }
+                , focused = newFocus
               }
-            , Cmd.none
+            , Task.attempt (\_ -> NoOp) (Dom.focus <| colId <| focused2ColId newFocus)
             )
 
         UpperRowInput row col mval ->
@@ -587,7 +664,19 @@ update msg m =
             ( Animator.update newTime animator m, Cmd.none )
 
         Focus dir ->
-            ( { m | focused = changeFocus op m.focused dir }, Cmd.none )
+            let
+                newFocused =
+                    changeFocus op m.focused dir
+            in
+            ( { m | focused = newFocused }
+            , Task.attempt (\_ -> NoOp) (Dom.focus <| colId <| focused2ColId newFocused)
+            )
+
+        ForceFocus cid ->
+            ( { m | focused = colId2focused cid }, Task.attempt (\_ -> NoOp) (Dom.focus <| colId cid) )
+
+        NoOp ->
+            ( m, Cmd.none )
 
 
 changeFocus : MultiplicationInput -> Focused -> FocusDirection -> Focused
@@ -607,42 +696,45 @@ changeFocus op focused dir =
     in
     case ( focused, dir ) of
         ( FocusedUpperRow x y, FocusUp ) ->
-            if y > 0 then
-                FocusedUpperRow x (y - 1)
+            if y < upperRowsLen - 1 then
+                FocusedUpperRow x (y + 1)
 
             else
                 FocusedUpperRow x 0
 
         ( FocusedUpperRow x y, FocusDown ) ->
-            if y < upperRowsLen - 1 then
-                FocusedUpperRow x (y + 1)
+            if y > 0 then
+                FocusedUpperRow x (y - 1)
 
-            else if resultRowsLen > 1 then
-                FocusedSumUpperRow x
+            else if resultRowsLen > 2 then
+                FocusedSumUpperRow (x + 1)
 
             else
-                FocusedFinalRow x
+                FocusedResultRow (x + 1) 0
 
         ( FocusedUpperRow x y, FocusLeft ) ->
-            if x < upperRowLen - 1 then
-                FocusedUpperRow (x + 1) y
-
-            else
-                FocusedUpperRow (upperRowLen - 1) y
-
-        ( FocusedUpperRow x y, FocusRight ) ->
             if x > 0 then
                 FocusedUpperRow (x - 1) y
 
             else
                 FocusedUpperRow 0 y
 
+        ( FocusedUpperRow x y, FocusRight ) ->
+            if x < upperRowLen - 1 then
+                FocusedUpperRow (x + 1) y
+
+            else
+                FocusedUpperRow (upperRowLen - 1) y
+
         ( FocusedResultRow x y, FocusUp ) ->
             if y > 0 then
                 FocusedResultRow x (y - 1)
 
-            else
+            else if resultRowsLen > 2 then
                 FocusedSumUpperRow x
+
+            else
+                FocusedUpperRow (max 0 (min (x - 1) (upperRowLen - 1))) 0
 
         ( FocusedResultRow x y, FocusDown ) ->
             if y < resultRowsLen - 1 then
@@ -652,65 +744,65 @@ changeFocus op focused dir =
                 FocusedFinalRow x
 
         ( FocusedResultRow x y, FocusLeft ) ->
-            if x < rowLen - 1 then
-                FocusedResultRow (x + 1) y
-
-            else
-                FocusedResultRow (rowLen - 1) y
-
-        ( FocusedResultRow x y, FocusRight ) ->
             if x > 0 then
                 FocusedResultRow (x - 1) y
 
             else
                 FocusedResultRow 0 y
 
+        ( FocusedResultRow x y, FocusRight ) ->
+            if x < rowLen - 1 then
+                FocusedResultRow (x + 1) y
+
+            else
+                FocusedResultRow (rowLen - 1) y
+
         ( FocusedSumUpperRow x, FocusUp ) ->
-            FocusedUpperRow x (upperRowsLen - 1)
+            FocusedUpperRow (max 0 (min (x - 1) (upperRowLen - 1))) 0
 
         ( FocusedSumUpperRow x, FocusDown ) ->
             FocusedResultRow x 0
 
         ( FocusedSumUpperRow x, FocusLeft ) ->
-            if x < rowLen - 1 then
-                FocusedSumUpperRow (x + 1)
-
-            else
-                FocusedSumUpperRow (rowLen - 1)
-
-        ( FocusedSumUpperRow x, FocusRight ) ->
             if x > 0 then
                 FocusedSumUpperRow (x - 1)
 
             else
                 FocusedSumUpperRow 0
 
+        ( FocusedSumUpperRow x, FocusRight ) ->
+            if x < rowLen - 1 then
+                FocusedSumUpperRow (x + 1)
+
+            else
+                FocusedSumUpperRow (rowLen - 1)
+
         ( FocusedFinalRow x, FocusUp ) ->
-            if resultRowsLen > 1 then
+            if resultRowsLen > 2 then
                 FocusedResultRow x (resultRowsLen - 1)
 
             else
-                FocusedUpperRow (min x (upperRowLen - 1)) (upperRowsLen - 1)
+                FocusedUpperRow (max 0 (min (x - 1) (upperRowLen - 1))) 0
 
         ( FocusedFinalRow x, FocusDown ) ->
             FocusedFinalRow x
 
         ( FocusedFinalRow x, FocusLeft ) ->
-            if x < rowLen - 1 then
-                FocusedFinalRow (x + 1)
-
-            else
-                FocusedFinalRow (rowLen - 1)
-
-        ( FocusedFinalRow x, FocusRight ) ->
             if x > 0 then
                 FocusedFinalRow (x - 1)
 
             else
                 FocusedFinalRow 0
 
+        ( FocusedFinalRow x, FocusRight ) ->
+            if x < rowLen - 1 then
+                FocusedFinalRow (x + 1)
+
+            else
+                FocusedFinalRow (rowLen - 1)
+
         ( FocusedNothing, _ ) ->
-            FocusedFinalRow 0
+            FocusedResultRow 0 (rowLen - 1)
 
 
 animator : Animator.Animator Model
@@ -826,14 +918,20 @@ calculationView m =
         animatedInputRow =
             renderInputRow m.errors
 
+        resultRowsLen =
+            List.length m.currentOperation.resultRows
+
+        upperRowsLen =
+            List.length m.currentOperation.upperRows
+
         lastLine =
             animatedInputRow
-                "newresultrow"
+                (ResultRow resultRowsLen)
                 resultRowStyle
                 resultColsNum
                 []
                 Nothing
-                (ResultRowInput (List.length m.currentOperation.resultRows))
+                (ResultRowInput resultRowsLen)
 
         moreThan1ResultRow =
             List.length m.currentOperation.resultRows
@@ -863,10 +961,10 @@ calculationView m =
         ]
     <|
         Element.column []
-            (animatedInputRow "newupperrow" upperRowStyle digitsColsNum [] Nothing (UpperRowInput (List.length m.currentOperation.upperRows))
+            (animatedInputRow (UpperRow upperRowsLen) upperRowStyle digitsColsNum [] Nothing (UpperRowInput upperRowsLen)
                 :: List.reverse
                     (List.indexedMap
-                        (\i ( r, d ) -> animatedInputRow "upperrow" upperRowStyle digitsColsNum r d <| UpperRowInput i)
+                        (\i ( r, d ) -> animatedInputRow (UpperRow i) upperRowStyle digitsColsNum r d <| UpperRowInput i)
                      <|
                         zipWithDefault [] Nothing m.currentOperation.upperRows diff.upperRows
                     )
@@ -874,19 +972,19 @@ calculationView m =
                    , operationLine "×" [ textNumber multiplierDigits ]
                    ]
                 ++ (if moreThan1ResultRow then
-                        [ animatedInputRow "sumupperrow" upperRowStyle resultColsNum m.currentOperation.sumUpperRow diff.sumUpperRow SumUpperRowInput ]
+                        [ animatedInputRow SumUpperRow upperRowStyle resultColsNum m.currentOperation.sumUpperRow diff.sumUpperRow SumUpperRowInput ]
 
                     else
                         []
                    )
                 ++ (List.indexedMap
-                        (\i ( r, d ) -> animatedInputRow "resultrow" resultRowStyle resultColsNum r d <| ResultRowInput i)
+                        (\i ( r, d ) -> animatedInputRow (ResultRow i) resultRowStyle resultColsNum r d <| ResultRowInput i)
                     <|
                         zipWithDefault [] Nothing m.currentOperation.resultRows diff.resultRows
                    )
                 ++ (if moreThan1ResultRow then
                         [ operationLine "+" [ lastLine ]
-                        , animatedInputRow "finalrow" resultRowStyle resultColsNum m.currentOperation.finalResult diff.finalResult FinalResultRowInput
+                        , animatedInputRow FinalRow resultRowStyle resultColsNum m.currentOperation.finalResult diff.finalResult FinalResultRowInput
                         ]
 
                     else
@@ -908,14 +1006,14 @@ operationLine operator children =
 
 renderInputRow :
     Animator.Timeline state
-    -> String
+    -> RowId
     -> List (Element.Attribute Msg)
     -> Int
     -> List (Maybe Int)
     -> Maybe (List CheckedDigit)
     -> (Int -> Maybe Int -> Msg)
     -> Element.Element Msg
-renderInputRow timeline name style numEl elements mdiff action =
+renderInputRow timeline rid style numEl elements mdiff action =
     Keyed.row
         [ Element.width Element.fill
         , Font.variant Font.tabularNumbers
@@ -925,7 +1023,14 @@ renderInputRow timeline name style numEl elements mdiff action =
     <|
         List.indexedMap
             (\idx ( mn, d ) ->
-                ( name ++ String.fromInt numEl ++ "," ++ String.fromInt idx
+                let
+                    cid =
+                        ColId rid idx
+
+                    elId =
+                        colId cid
+                in
+                ( elId
                 , Input.text
                     ([ Element.width (Element.px 20)
                      , Font.color (Element.rgb255 200 10 10)
@@ -934,12 +1039,15 @@ renderInputRow timeline name style numEl elements mdiff action =
                      , Element.pointer
                      , Element.focused [ Background.color (Element.rgba 1 1 1 0.5) ]
                      , Element.mouseOver [ Background.color (Element.rgba 1 1 1 0.25) ]
+                     , Events.onFocus <| ForceFocus cid
+                     , Element.htmlAttribute <| Html.id elId
                      , Element.htmlAttribute
                         (Keyboard.on Keyboard.Keydown
                             [ ( ArrowUp, Focus FocusUp )
                             , ( ArrowDown, Focus FocusDown )
                             , ( ArrowLeft, Focus FocusLeft )
                             , ( ArrowRight, Focus FocusRight )
+                            , ( Enter, CheckResult )
                             ]
                         )
                      , Background.color
