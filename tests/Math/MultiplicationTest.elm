@@ -1,8 +1,8 @@
-module MultiplicationTest exposing (calculatingResultSuite, decimalsSuite, errorsSuite, multiplicationSuite)
+module Math.MultiplicationTest exposing (calculatingResultSuite, decimalsSuite, errorsSuite, multiplicationSuite)
 
 import Expect exposing (Expectation)
 import Fuzz
-import Multiplication exposing (CheckedDigit(..))
+import Math.Multiplication as Multiplication exposing (CheckedDigit(..))
 import Test exposing (..)
 
 
