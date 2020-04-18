@@ -115,7 +115,7 @@ rowId rid =
             "resultrow" ++ String.fromInt i
 
         FinalRow ->
-            "final"
+            "finalrow"
 
 
 colId : ColId -> String
@@ -673,7 +673,7 @@ update msg m =
             )
 
         ForceFocus cid ->
-            ( { m | focused = colId2focused cid }, Task.attempt (\_ -> NoOp) (Dom.focus <| colId cid) )
+            ( { m | focused = colId2focused cid }, Cmd.none )
 
         NoOp ->
             ( m, Cmd.none )
@@ -700,7 +700,7 @@ changeFocus op focused dir =
                 FocusedUpperRow x (y + 1)
 
             else
-                FocusedUpperRow x 0
+                FocusedUpperRow x (upperRowsLen - 1)
 
         ( FocusedUpperRow x y, FocusDown ) ->
             if y > 0 then
@@ -740,8 +740,11 @@ changeFocus op focused dir =
             if y < resultRowsLen - 1 then
                 FocusedResultRow x (y + 1)
 
-            else
+            else if resultRowsLen > 2 then
                 FocusedFinalRow x
+
+            else
+                FocusedResultRow x (resultRowsLen - 1)
 
         ( FocusedResultRow x y, FocusLeft ) ->
             if x > 0 then
@@ -919,19 +922,25 @@ calculationView m =
             renderInputRow m.errors
 
         resultRowsLen =
-            List.length m.currentOperation.resultRows
+            max
+                (List.length m.currentOperation.resultRows)
+                (List.length diff.resultRows)
 
         upperRowsLen =
-            List.length m.currentOperation.upperRows
+            max
+                (List.length m.currentOperation.upperRows)
+                (List.length diff.upperRows)
 
-        lastLine =
+        lastLine mop =
             animatedInputRow
-                (ResultRow resultRowsLen)
-                resultRowStyle
-                resultColsNum
+                { rid = ResultRow resultRowsLen
+                , numEl = resultColsNum
+                , style = resultRowStyle
+                , operator = mop
+                , action = ResultRowInput resultRowsLen
+                }
                 []
                 Nothing
-                (ResultRowInput resultRowsLen)
 
         moreThan1ResultRow =
             List.length m.currentOperation.resultRows
@@ -960,129 +969,218 @@ calculationView m =
         , Element.height Element.fill
         ]
     <|
-        Element.column []
-            (animatedInputRow (UpperRow upperRowsLen) upperRowStyle digitsColsNum [] Nothing (UpperRowInput upperRowsLen)
+        Keyed.column []
+            (( rowId (UpperRow upperRowsLen)
+             , animatedInputRow
+                { rid = UpperRow upperRowsLen
+                , numEl = digitsColsNum
+                , style = upperRowStyle
+                , operator = Nothing
+                , action = UpperRowInput upperRowsLen
+                }
+                []
+                Nothing
+             )
                 :: List.reverse
                     (List.indexedMap
-                        (\i ( r, d ) -> animatedInputRow (UpperRow i) upperRowStyle digitsColsNum r d <| UpperRowInput i)
+                        (\i ( r, d ) ->
+                            ( rowId (UpperRow i)
+                            , animatedInputRow
+                                { rid = UpperRow i
+                                , numEl = digitsColsNum
+                                , style = upperRowStyle
+                                , operator = Nothing
+                                , action = UpperRowInput i
+                                }
+                                r
+                                d
+                            )
+                        )
                      <|
                         zipWithDefault [] Nothing m.currentOperation.upperRows diff.upperRows
                     )
-                ++ [ textNumber multiplicandDigits
-                   , operationLine "×" [ textNumber multiplierDigits ]
+                ++ [ ( "multiplicand", textNumber multiplicandDigits )
+                   , ( "multiplier", operationLine "×" [ textNumber multiplierDigits ] )
                    ]
                 ++ (if moreThan1ResultRow then
-                        [ animatedInputRow SumUpperRow upperRowStyle resultColsNum m.currentOperation.sumUpperRow diff.sumUpperRow SumUpperRowInput ]
+                        [ ( rowId SumUpperRow
+                          , animatedInputRow
+                                { rid = SumUpperRow
+                                , numEl = resultColsNum
+                                , style = upperRowStyle
+                                , operator = Nothing
+                                , action = SumUpperRowInput
+                                }
+                                m.currentOperation.sumUpperRow
+                                diff.sumUpperRow
+                          )
+                        ]
 
                     else
                         []
                    )
                 ++ (List.indexedMap
-                        (\i ( r, d ) -> animatedInputRow (ResultRow i) resultRowStyle resultColsNum r d <| ResultRowInput i)
+                        (\i ( r, d ) ->
+                            ( rowId (ResultRow i)
+                            , animatedInputRow
+                                { rid = ResultRow i
+                                , numEl = resultColsNum
+                                , style = resultRowStyle
+                                , operator = Nothing
+                                , action = ResultRowInput i
+                                }
+                                r
+                                d
+                            )
+                        )
                     <|
                         zipWithDefault [] Nothing m.currentOperation.resultRows diff.resultRows
                    )
                 ++ (if moreThan1ResultRow then
-                        [ operationLine "+" [ lastLine ]
-                        , animatedInputRow FinalRow resultRowStyle resultColsNum m.currentOperation.finalResult diff.finalResult FinalResultRowInput
+                        [ ( rowId (ResultRow resultRowsLen), lastLine (Just "+") )
+                        , ( rowId FinalRow
+                          , animatedInputRow
+                                { rid = FinalRow
+                                , numEl = resultColsNum
+                                , style = resultRowStyle
+                                , operator = Nothing
+                                , action = FinalResultRowInput
+                                }
+                                m.currentOperation.finalResult
+                                diff.finalResult
+                          )
                         ]
 
                     else
-                        [ lastLine ]
+                        [ ( rowId (ResultRow resultRowsLen), lastLine Nothing ) ]
                    )
             )
+
+
+operatorRowStyle : List (Element.Attribute Msg)
+operatorRowStyle =
+    [ Border.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
+    , Border.solid
+    ]
+
+
+operatorEl : String -> Element.Element Msg
+operatorEl op =
+    Element.el [ Element.width (Element.px 20) ] <| Element.text op
 
 
 operationLine : String -> List (Element.Element Msg) -> Element.Element Msg
 operationLine operator children =
     Element.row
-        [ Border.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
-        , Border.solid
-        , Element.spacing 0
-        , Element.width Element.fill
-        ]
-        ((Element.el [ Element.width (Element.px 20) ] <| Element.text operator) :: children)
+        (operatorRowStyle
+            ++ [ Element.spacing 0
+               , Element.width Element.fill
+               ]
+        )
+        (operatorEl operator :: children)
+
+
+type alias RenderInputRowOptions =
+    { rid : RowId
+    , style : List (Element.Attribute Msg)
+    , numEl : Int
+    , action : Int -> Maybe Int -> Msg
+    , operator : Maybe String
+    }
 
 
 renderInputRow :
     Animator.Timeline state
-    -> RowId
-    -> List (Element.Attribute Msg)
-    -> Int
+    -> RenderInputRowOptions
     -> List (Maybe Int)
     -> Maybe (List CheckedDigit)
-    -> (Int -> Maybe Int -> Msg)
     -> Element.Element Msg
-renderInputRow timeline rid style numEl elements mdiff action =
+renderInputRow timeline opts elements mdiff =
     Keyed.row
-        [ Element.width Element.fill
-        , Font.variant Font.tabularNumbers
-        , Element.spacing 0
-        , Element.padding 0
-        ]
-    <|
-        List.indexedMap
-            (\idx ( mn, d ) ->
-                let
-                    cid =
-                        ColId rid idx
+        ([ Element.width Element.fill
+         , Font.variant Font.tabularNumbers
+         , Element.spacing 0
+         , Element.padding 0
+         ]
+            ++ (case opts.operator of
+                    Just op ->
+                        operatorRowStyle
 
-                    elId =
-                        colId cid
-                in
-                ( elId
-                , Input.text
-                    ([ Element.width (Element.px 20)
-                     , Font.color (Element.rgb255 200 10 10)
-                     , Element.height (Element.px 20)
-                     , Element.padding 0
-                     , Element.pointer
-                     , Element.focused [ Background.color (Element.rgba 1 1 1 0.5) ]
-                     , Element.mouseOver [ Background.color (Element.rgba 1 1 1 0.25) ]
-                     , Events.onFocus <| ForceFocus cid
-                     , Element.htmlAttribute <| Html.id elId
-                     , Element.htmlAttribute
-                        (Keyboard.on Keyboard.Keydown
-                            [ ( ArrowUp, Focus FocusUp )
-                            , ( ArrowDown, Focus FocusDown )
-                            , ( ArrowLeft, Focus FocusLeft )
-                            , ( ArrowRight, Focus FocusRight )
-                            , ( Enter, CheckResult )
-                            ]
-                        )
-                     , Background.color
-                        (if isOk d then
-                            Element.rgba 1 1 1 0
-
-                         else
-                            Element.rgba 1 0 0 <|
-                                Animator.linear timeline <|
-                                    \_ ->
-                                        Animator.wave 0 0.65 |> Animator.loop (Animator.millis 900)
-                        )
-                     , Border.width 0
-                     ]
-                        ++ style
-                    )
-                    { onChange = action idx << Maybe.map (remainderBy 10) << String.toInt
-                    , text = Maybe.withDefault "" <| Maybe.map String.fromInt mn
-                    , placeholder = Nothing
-                    , label = Input.labelHidden ""
-                    }
-                )
-            )
-        <|
-            zip
-                (List.repeat (numEl - List.length elements) Nothing
-                    ++ elements
-                )
-                (case mdiff of
                     Nothing ->
-                        List.repeat numEl (IsOk 0)
+                        []
+               )
+        )
+    <|
+        (case opts.operator of
+            Just op ->
+                [ ( "operator" ++ op, operatorEl op ) ]
 
-                    Just diff ->
-                        List.repeat (numEl - List.length diff) (IsOk 0) ++ diff
-                )
+            Nothing ->
+                []
+        )
+            ++ (List.indexedMap
+                    (\idx ( mn, d ) ->
+                        let
+                            cid =
+                                ColId opts.rid idx
+
+                            elId =
+                                colId cid
+                        in
+                        ( elId
+                        , Input.text
+                            ([ Element.width (Element.px 20)
+                             , Font.color (Element.rgb255 200 10 10)
+                             , Element.height (Element.px 20)
+                             , Element.padding 0
+                             , Element.pointer
+                             , Element.focused [ Background.color (Element.rgba 1 1 1 0.5) ]
+                             , Element.mouseOver [ Background.color (Element.rgba 1 1 1 0.25) ]
+                             , Events.onFocus <| ForceFocus cid
+                             , Element.htmlAttribute <| Html.id elId
+                             , Element.htmlAttribute
+                                (Keyboard.on Keyboard.Keydown
+                                    [ ( ArrowUp, Focus FocusUp )
+                                    , ( ArrowDown, Focus FocusDown )
+                                    , ( ArrowLeft, Focus FocusLeft )
+                                    , ( ArrowRight, Focus FocusRight )
+                                    , ( Enter, CheckResult )
+                                    ]
+                                )
+                             , Background.color
+                                (if isOk d then
+                                    Element.rgba 1 1 1 0
+
+                                 else
+                                    Element.rgba 1 0 0 <|
+                                        Animator.linear timeline <|
+                                            \_ ->
+                                                Animator.wave 0 0.65 |> Animator.loop (Animator.millis 900)
+                                )
+                             , Border.width 0
+                             ]
+                                ++ opts.style
+                            )
+                            { onChange = opts.action idx << Maybe.map (remainderBy 10) << String.toInt
+                            , text = Maybe.withDefault "" <| Maybe.map String.fromInt mn
+                            , placeholder = Nothing
+                            , label = Input.labelHidden ""
+                            }
+                        )
+                    )
+                <|
+                    zip
+                        (List.repeat (opts.numEl - List.length elements) Nothing
+                            ++ elements
+                        )
+                        (case mdiff of
+                            Nothing ->
+                                List.repeat opts.numEl (IsOk 0)
+
+                            Just diff ->
+                                List.repeat (opts.numEl - List.length diff) (IsOk 0) ++ diff
+                        )
+               )
 
 
 textNumber : List Int -> Element.Element Msg
