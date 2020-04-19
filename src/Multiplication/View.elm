@@ -135,13 +135,22 @@ update msg m =
 
                 newOp =
                     { op | upperRows = nonzeroUpperRows }
+
+                err =
+                    errors (input2multiplication newOp)
             in
             ( { m
                 | currentOperation = newOp
-                , checked = True
+                , passed =
+                    case err of
+                        Just _ ->
+                            False
+
+                        _ ->
+                            True
                 , errors =
                     Animator.interrupt
-                        [ Animator.event Animator.immediately (errors (input2multiplication newOp))
+                        [ Animator.event Animator.immediately err
                         , Animator.wait (Animator.millis 950)
                         , Animator.event Animator.immediately Nothing
                         ]
@@ -269,7 +278,27 @@ calculationView m =
         , Element.height Element.fill
         ]
     <|
-        Keyed.column []
+        Keyed.column
+            [ Element.centerX
+            , Element.paddingEach
+                { top = 19
+                , bottom = 20
+                , left =
+                    case ( remainderBy 2 resultColsNum == 0, moreThan1ResultRow ) of
+                        ( True, False ) ->
+                            0
+
+                        ( True, True ) ->
+                            21
+
+                        ( False, False ) ->
+                            21
+
+                        ( False, True ) ->
+                            0
+                , right = 0
+                }
+            ]
             (( rowId (UpperRow upperRowsLen)
              , animatedInputRow
                 { rid = UpperRow upperRowsLen

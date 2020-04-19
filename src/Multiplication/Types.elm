@@ -22,7 +22,7 @@ import Math.Multiplication exposing (..)
 
 type alias Model =
     { currentOperation : MultiplicationInput
-    , checked : Bool
+    , passed : Bool
     , errors : Animator.Timeline (Maybe AnnotatedMultiplication)
     , focused : Focused
     }
@@ -138,7 +138,7 @@ colId2focused (ColId rid x) =
 emptyModel : Model
 emptyModel =
     { currentOperation = emptyMultiplicationInput
-    , checked = False
+    , passed = False
     , errors = Animator.init Nothing
     , focused = FocusedNothing
     }
@@ -193,7 +193,7 @@ changeFocus op focused dir =
 
         ( FocusedUpperRow x y, FocusLeft ) ->
             if x > 0 then
-                FocusedUpperRow (x - upRowDiff) y
+                FocusedUpperRow (x - 1) y
 
             else
                 FocusedUpperRow 0 y
