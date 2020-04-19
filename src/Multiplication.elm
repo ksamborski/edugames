@@ -398,8 +398,33 @@ gameFinishedPageView m =
                 { passed = 0, retries = 0, minTime = 0, maxTime = 0 }
                 m.doneOperations
 
+        numFrom =
+            if m.minNumOfDigits <= 1 then
+                0
+
+            else
+                10 ^ (m.minNumOfDigits - 1)
+
+        numTo =
+            10 ^ m.maxNumOfDigits - 1
+    in
+    frame
+        [ header "Koniec gry"
+        , frameLine "Przedział liczbowy:" ( "od " ++ String.fromInt numFrom ++ " do " ++ String.fromInt numTo, Element.rgb 0 0 0 )
+        , frameLine "Liczba działań:" ( String.fromInt m.numOfOperations, Element.rgb 0 0 0 )
+        , frameLine "Liczba poprawnych odpowiedzi:" ( String.fromInt passed, Element.rgb 0 1 0 )
+        , frameLine "Liczba błędnych odpowiedzi:" ( String.fromInt (m.numOfOperations - passed), Element.rgb 1 0 0 )
+        , frameLine "Liczba prób:" ( String.fromInt retries, Element.rgb 0 0 0 )
+        , frameLine "Czas całkowity:" ( timeString minTime maxTime, Element.rgb 0 0 0 )
+        , frameButton "Nowa gra" NewGame
+        ]
+
+
+timeString : Int -> Int -> String
+timeString from to =
+    let
         nsec =
-            (maxTime - minTime) // 1000
+            (to - from) // 1000
 
         hours =
             nsec // 3600
@@ -410,15 +435,29 @@ gameFinishedPageView m =
         sec =
             nsec - (hours * 3600) - (minutes * 60)
     in
-    frame
-        [ header "Koniec gry"
-        , frameLine "Liczba działań:" ( String.fromInt m.numOfOperations, Element.rgb 0 0 0 )
-        , frameLine "Liczba poprawnych odpowiedzi:" ( String.fromInt passed, Element.rgb 0 1 0 )
-        , frameLine "Liczba błędnych odpowiedzi:" ( String.fromInt (m.numOfOperations - passed), Element.rgb 1 0 0 )
-        , frameLine "Liczba prób:" ( String.fromInt retries, Element.rgb 0 0 0 )
-        , frameLine "Czas całkowity:" ( String.fromInt hours ++ ":" ++ String.fromInt minutes ++ ":" ++ String.fromInt sec, Element.rgb 0 0 0 )
-        , frameButton "Nowa gra" NewGame
-        ]
+    (if hours < 10 then
+        "0"
+
+     else
+        ""
+    )
+        ++ String.fromInt hours
+        ++ ":"
+        ++ (if minutes < 10 then
+                "0"
+
+            else
+                ""
+           )
+        ++ String.fromInt minutes
+        ++ ":"
+        ++ (if sec < 10 then
+                "0"
+
+            else
+                ""
+           )
+        ++ String.fromInt sec
 
 
 gamePageView : Model -> Element.Element Msg
