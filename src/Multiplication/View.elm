@@ -129,7 +129,7 @@ update msg m =
             let
                 nonzeroUpperRows =
                     transpose <|
-                        fixedRows True 0 Nothing <|
+                        fixedRows False 0 Nothing <|
                             List.map (List.filter (\mv -> mv /= Just 0 && mv /= Nothing)) <|
                                 transpose op.upperRows
 
