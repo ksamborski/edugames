@@ -499,7 +499,52 @@ gamePageView m =
     Element.row [ Element.height Element.fill, Element.width Element.fill ]
         [ operationView m
         , Element.map GameMsg <| Multiplication.calculationView m.game (m.width - operationViewWidth)
+        , arrowKeysView
         ]
+
+
+arrowKeysView : Element.Element Msg
+arrowKeysView =
+    Element.column [ Element.spacing 10, Element.padding 10, Element.alignRight, Element.alignBottom ]
+        [ arrowKeyButton "🡅" (GameMsg <| Multiplication.Focus Multiplication.FocusUp)
+        , Element.row [ Element.width Element.fill, Element.spacing 60 ]
+            [ arrowKeyButton "🡄" (GameMsg <| Multiplication.Focus Multiplication.FocusLeft)
+            , arrowKeyButton "🡆" (GameMsg <| Multiplication.Focus Multiplication.FocusRight)
+            ]
+        , arrowKeyButton "🡇" (GameMsg <| Multiplication.Focus Multiplication.FocusDown)
+        , arrowKeysViewHint "Enter wywołuje sprawdzenie"
+        , arrowKeysViewHint "Używaj strzałek by się poruszać"
+        ]
+
+
+arrowKeyButton : String -> Msg -> Element.Element Msg
+arrowKeyButton label action =
+    Input.button
+        [ Background.color (Element.rgb255 200 200 200)
+        , Element.height (Element.px 40)
+        , Element.width (Element.px 40)
+        , Element.focused []
+        , Element.mouseOver [ Background.color (Element.rgb255 230 230 230) ]
+        , Font.center
+        , Border.width 1
+        , Border.solid
+        , Border.color (Element.rgb 1 1 1)
+        , Element.centerX
+        ]
+        { onPress = Just action
+        , label = Element.text label
+        }
+
+
+arrowKeysViewHint : String -> Element.Element Msg
+arrowKeysViewHint =
+    Element.el
+        [ Element.width Element.fill
+        , Font.alignRight
+        , Font.size 20
+        , Font.family [ Font.typeface "Slabo 27px", Font.serif ]
+        ]
+        << Element.text
 
 
 operationViewWidth : Int
