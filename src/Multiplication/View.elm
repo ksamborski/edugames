@@ -212,8 +212,8 @@ zipWithDefault defa defb a b =
         zip a (b ++ List.repeat (aLen - bLen) defb)
 
 
-calculationView : Model -> Element.Element Msg
-calculationView m =
+calculationView : Model -> Int -> Element.Element Msg
+calculationView m w =
     let
         multiplicandDigits =
             decimals m.currentOperation.multiplicand
@@ -279,26 +279,7 @@ calculationView m =
         ]
     <|
         Keyed.column
-            [ Element.centerX
-            , Element.paddingEach
-                { top = 19
-                , bottom = 20
-                , left =
-                    case ( remainderBy 2 resultColsNum == 0, moreThan1ResultRow ) of
-                        ( True, False ) ->
-                            0
-
-                        ( True, True ) ->
-                            21
-
-                        ( False, False ) ->
-                            21
-
-                        ( False, True ) ->
-                            0
-                , right = 0
-                }
-            ]
+            [ centerXbyCols resultColsNum w ]
             (( rowId (UpperRow upperRowsLen)
              , animatedInputRow
                 { rid = UpperRow upperRowsLen
@@ -384,6 +365,25 @@ calculationView m =
                         [ ( rowId (ResultRow resultRowsLen), lastLine Nothing ) ]
                    )
             )
+
+
+centerXbyCols : Int -> Int -> Element.Attribute Msg
+centerXbyCols cols w =
+    Element.paddingEach
+        { top = 19
+        , bottom = 19
+        , left =
+            let
+                width =
+                    w - remainderBy 40 w
+            in
+            if remainderBy 2 cols == 0 then
+                (width - cols * 20) // 2
+
+            else
+                (width - (cols + 1) * 20) // 2
+        , right = 19
+        }
 
 
 operatorRowStyle : List (Element.Attribute Msg)

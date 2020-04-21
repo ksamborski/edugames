@@ -2,6 +2,8 @@ module Multiplication exposing (main)
 
 import Animator
 import Browser
+import Browser.Dom as Dom
+import Browser.Events as Events
 import Element
 import Element.Background as Background
 import Element.Border as Border
@@ -26,6 +28,8 @@ type alias Model =
     , pendingOperations : List Operation
     , doneOperations : List Operation
     , page : Page
+    , width : Int
+    , height : Int
     }
 
 
@@ -58,6 +62,9 @@ type Msg
     | SkipOperation
     | EndOperation Time.Posix
     | NewGame
+    | GotSize Dom.Element
+    | Resized
+    | NoOp
 
 
 emptyOperation : Operation
@@ -82,6 +89,8 @@ emptyModel =
     , pendingOperations = []
     , doneOperations = []
     , page = SettingsPage
+    , width = 0
+    , height = 0
     }
 
 
@@ -119,10 +128,21 @@ multNumPairsGenerator n digMin digMax =
 main : Program () Model Msg
 main =
     Browser.element
-        { init = \_ -> ( emptyModel, Cmd.none )
+        { init =
+            \_ ->
+                ( emptyModel
+                , Task.attempt
+                    (Result.withDefault NoOp << Result.map GotSize)
+                    (Dom.getElement "multiplication")
+                )
         , view = view
         , update = update
-        , subscriptions = \m -> Animator.toSubscription AnimationTick m animator
+        , subscriptions =
+            \m ->
+                Sub.batch
+                    [ Animator.toSubscription AnimationTick m animator
+                    , Events.onResize (\_ _ -> Resized)
+                    ]
         }
 
 
@@ -248,6 +268,19 @@ update msg m =
             , Cmd.none
             )
 
+        GotSize el ->
+            ( { m | width = floor el.element.width, height = floor el.element.height }, Cmd.none )
+
+        Resized ->
+            ( m
+            , Task.attempt
+                (Result.withDefault NoOp << Result.map GotSize)
+                (Dom.getElement "multiplication")
+            )
+
+        NoOp ->
+            ( m, Cmd.none )
+
 
 animator : Animator.Animator Model
 animator =
@@ -258,6 +291,7 @@ view : Model -> Html Msg
 view m =
     Element.layout
         [ Background.color (Element.rgb255 220 220 220)
+        , Element.htmlAttribute <| Html.id "multiplication"
         , Element.htmlAttribute <|
             Html.style "background-image" "linear-gradient(rgba(255,255,255,.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.3) 1px, transparent 1px)"
         , Element.htmlAttribute <|
@@ -464,8 +498,13 @@ gamePageView : Model -> Element.Element Msg
 gamePageView m =
     Element.row [ Element.height Element.fill, Element.width Element.fill ]
         [ operationView m
-        , Element.map GameMsg <| Multiplication.calculationView m.game
+        , Element.map GameMsg <| Multiplication.calculationView m.game (m.width - operationViewWidth)
         ]
+
+
+operationViewWidth : Int
+operationViewWidth =
+    259
 
 
 operationView : Model -> Element.Element Msg
@@ -486,7 +525,7 @@ operationView m =
         , Background.color (Element.rgba 1 1 1 0.75)
         , Border.widthEach { top = 0, bottom = 0, left = 0, right = 1 }
         , Border.color (Element.rgb255 10 10 200)
-        , Element.width (Element.px 259)
+        , Element.width (Element.px operationViewWidth)
         , Element.height Element.fill
         ]
         [ header <|
