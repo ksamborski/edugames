@@ -467,6 +467,8 @@ renderInputRow timeline opts elements mdiff =
                              , Element.mouseOver [ Background.color (Element.rgba 1 1 1 0.25) ]
                              , Events.onFocus <| ForceFocus cid
                              , Element.htmlAttribute <| Html.id elId
+                             , Element.htmlAttribute <| Html.style "inputmode" "numeric"
+                             , Element.htmlAttribute <| Html.style "pattern" "[0-9]"
                              , Element.htmlAttribute
                                 (Keyboard.on Keyboard.Keydown
                                     [ ( ArrowUp, Focus FocusUp )
