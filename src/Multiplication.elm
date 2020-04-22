@@ -179,7 +179,12 @@ update msg m =
                 , page = GamePage
                 , game = g
               }
-            , Cmd.map GameMsg cmds
+            , Cmd.batch
+                [ Cmd.map GameMsg cmds
+                , Task.attempt
+                    (Result.withDefault NoOp << Result.map GotSize)
+                    (Dom.getElement "multiplication")
+                ]
             )
 
         SkipOperation ->
@@ -272,7 +277,7 @@ update msg m =
             ( { m | width = floor el.element.width, height = floor el.element.height }, Cmd.none )
 
         Resized ->
-            ( m
+            ( { m | height = 0, width = 0 }
             , Task.attempt
                 (Result.withDefault NoOp << Result.map GotSize)
                 (Dom.getElement "multiplication")
@@ -291,7 +296,6 @@ view : Model -> Html Msg
 view m =
     Element.layout
         [ Background.color (Element.rgb255 220 220 220)
-        , Element.htmlAttribute <| Html.id "multiplication"
         , Element.htmlAttribute <|
             Html.style "background-image" "linear-gradient(rgba(255,255,255,.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.3) 1px, transparent 1px)"
         , Element.htmlAttribute <|
@@ -496,10 +500,53 @@ timeString from to =
 
 gamePageView : Model -> Element.Element Msg
 gamePageView m =
-    Element.row [ Element.height Element.fill, Element.width Element.fill ]
+    let
+        op =
+            Maybe.withDefault emptyOperation m.currentOperation
+    in
+    Element.row
+        [ Element.height Element.fill
+        , Element.width Element.fill
+        ]
         [ operationView m
-        , Element.map GameMsg <| Multiplication.calculationView m.game (m.width - operationViewWidth)
-        , arrowKeysView
+        , Element.column
+            [ Element.height Element.fill
+            , Element.width Element.fill
+            , Element.htmlAttribute <| Html.id "multiplication"
+            ]
+            [ if op.retries >= m.maxNumOfRetries then
+                Element.row [ Element.alignTop, Element.width Element.fill, Element.paddingXY 0 19 ]
+                    [ withHeader "Twoja odpowiedź" (Element.rgb 1 0 0) <|
+                        Element.map GameMsg <|
+                            Multiplication.calculationView m.game (m.width // 2)
+                    , Element.el [ Element.centerX, Border.width 2, Border.solid, Element.height Element.fill ] Element.none
+                    , withHeader "Poprawna odpowiedź" (Element.rgb 0 1 0) <|
+                        Element.map GameMsg <|
+                            Multiplication.correctCalculationView m.game (m.width // 2)
+                    ]
+
+              else
+                Element.map GameMsg <| Multiplication.calculationView m.game m.width
+            , arrowKeysView
+            ]
+        ]
+
+
+withHeader : String -> Element.Color -> Element.Element Msg -> Element.Element Msg
+withHeader txt clr el =
+    Element.column
+        [ Element.alignTop, Element.width Element.fill ]
+        [ Element.el
+            [ Font.center
+            , Font.size 26
+            , Font.family [ Font.typeface "Oswald", Font.sansSerif ]
+            , Element.width Element.fill
+            , Element.paddingEach { right = 0, left = 0, bottom = 17, top = 17 }
+            , Font.color clr
+            , Element.alignTop
+            ]
+            (Element.text txt)
+        , el
         ]
 
 

@@ -1,4 +1,4 @@
-module Multiplication.View exposing (calculationView, init, setUpAnimator, update)
+module Multiplication.View exposing (calculationView, correctCalculationView, init, setUpAnimator, update)
 
 import Animator
 import Browser.Dom as Dom
@@ -175,6 +175,15 @@ update msg m =
             ( m, Cmd.none )
 
 
+upperRowNumberStyle : List (Element.Attribute Msg)
+upperRowNumberStyle =
+    [ Font.size 12
+    , Font.color (Element.rgb255 200 10 10)
+    , Element.htmlAttribute (Html.style "text-align" "center")
+    , Element.alignRight
+    ]
+
+
 upperRowStyle : List (Element.Attribute Msg)
 upperRowStyle =
     [ Font.size 12
@@ -210,6 +219,156 @@ zipWithDefault defa defb a b =
 
     else
         zip a (b ++ List.repeat (aLen - bLen) defb)
+
+
+correctCalculationView : Model -> Int -> Element.Element Msg
+correctCalculationView m w =
+    let
+        op =
+            correctResult m.currentOperation.multiplicand m.currentOperation.multiplier
+
+        multiplicandDigits =
+            decimals op.multiplicand
+
+        multiplierDigits =
+            decimals op.multiplier
+
+        resultColsNum =
+            List.length multiplierDigits + List.length multiplicandDigits
+
+        resultRowsLen =
+            List.length op.resultRows
+
+        moreThan1ResultRow =
+            List.length op.resultRows > 1
+    in
+    Element.el
+        [ Element.width Element.fill
+        , Element.height Element.fill
+        ]
+    <|
+        Element.column
+            [ centerXbyCols resultColsNum w ]
+            ((List.reverse <|
+                List.map
+                    (renderNumberRow
+                        { style = upperRowNumberStyle
+                        , operator = Nothing
+                        , skipFromRight = 0
+                        , skipZero = True
+                        }
+                    )
+                <|
+                    transpose <|
+                        fixedRows False 0 0 <|
+                            List.map (List.filter ((/=) 0)) <|
+                                transpose op.upperRows
+             )
+                ++ [ textNumber multiplicandDigits
+                   , operationLine "×" [ textNumber multiplierDigits ]
+                   ]
+                ++ (if moreThan1ResultRow then
+                        [ renderNumberRow
+                            { style = upperRowNumberStyle
+                            , operator = Nothing
+                            , skipFromRight = 0
+                            , skipZero = True
+                            }
+                            op.sumUpperRow
+                        ]
+
+                    else
+                        []
+                   )
+                ++ List.indexedMap
+                    (\i r ->
+                        renderNumberRow
+                            { style = resultRowStyle
+                            , operator =
+                                if moreThan1ResultRow && i == resultRowsLen - 1 then
+                                    Just "+"
+
+                                else
+                                    Nothing
+                            , skipFromRight = i
+                            , skipZero = False
+                            }
+                            r
+                    )
+                    op.resultRows
+                ++ (if moreThan1ResultRow then
+                        [ renderNumberRow
+                            { style = resultRowStyle
+                            , operator = Nothing
+                            , skipFromRight = 0
+                            , skipZero = False
+                            }
+                            op.finalResult
+                        ]
+
+                    else
+                        []
+                   )
+            )
+
+
+type alias RenderNumberRowOptions =
+    { style : List (Element.Attribute Msg)
+    , skipZero : Bool
+    , skipFromRight : Int
+    , operator : Maybe String
+    }
+
+
+renderNumberRow : RenderNumberRowOptions -> List Int -> Element.Element Msg
+renderNumberRow opts elements =
+    let
+        elLen =
+            List.length elements
+
+        elStyle =
+            [ Element.width (Element.px 20)
+            , Font.color (Element.rgb255 200 10 10)
+            , Element.padding 0
+            , Border.width 0
+            , Element.centerY
+            ]
+                ++ opts.style
+    in
+    Element.row
+        ([ Element.width Element.fill
+         , Font.variant Font.tabularNumbers
+         , Element.spacing 0
+         , Element.padding 0
+         , Element.height (Element.px 20)
+         ]
+            ++ (case opts.operator of
+                    Just op ->
+                        operatorRowStyle
+
+                    Nothing ->
+                        []
+               )
+        )
+    <|
+        (case opts.operator of
+            Just op ->
+                operatorEl op
+
+            Nothing ->
+                Element.none
+        )
+            :: List.indexedMap
+                (\idx el ->
+                    Element.el elStyle <|
+                        Element.text <|
+                            if elLen - idx - 1 < opts.skipFromRight || (opts.skipZero && el == 0) then
+                                ""
+
+                            else
+                                String.fromInt el
+                )
+                elements
 
 
 calculationView : Model -> Int -> Element.Element Msg
@@ -369,20 +528,22 @@ calculationView m w =
 
 centerXbyCols : Int -> Int -> Element.Attribute Msg
 centerXbyCols cols w =
-    Element.paddingEach
-        { top = 19
-        , bottom = 19
-        , left =
-            let
-                width =
-                    w - remainderBy 40 w
-            in
+    let
+        width =
+            w - remainderBy 40 w
+
+        paddingXY =
             if remainderBy 2 cols == 0 then
                 (width - cols * 20) // 2
 
             else
                 (width - (cols + 1) * 20) // 2
-        , right = 19
+    in
+    Element.paddingEach
+        { top = 19
+        , bottom = 19
+        , left = paddingXY
+        , right = paddingXY
         }
 
 
@@ -468,7 +629,7 @@ renderInputRow timeline opts elements mdiff =
                              , Events.onFocus <| ForceFocus cid
                              , Element.htmlAttribute <| Html.id elId
                              , Element.htmlAttribute <| Html.style "inputmode" "numeric"
-                             , Element.htmlAttribute <| Html.style "pattern" "[0-9]"
+                             , Element.htmlAttribute <| Html.style "pattern" "[0-9]?"
                              , Element.htmlAttribute
                                 (Keyboard.on Keyboard.Keydown
                                     [ ( ArrowUp, Focus FocusUp )
