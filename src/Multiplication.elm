@@ -105,7 +105,7 @@ multNumGenerator digMin digMax =
                 10 ^ (digMax - 1)
 
         numMax =
-            if digMax <= 1 then
+            if digMax < 1 then
                 0
 
             else
