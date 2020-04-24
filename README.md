@@ -12,4 +12,4 @@ Demo is available here (in Polish): [karolsamborski.com/gry/mnozenie-pisemne](ht
 ## Build instructions
 
 Running `make` will compile the source code with the debugger.
-`make release` will compile it with optimizations.
+`make multiplication_release` will compile it with optimizations.
