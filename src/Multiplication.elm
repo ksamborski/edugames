@@ -83,7 +83,7 @@ emptyModel =
     { game = Multiplication.emptyModel
     , minNumOfDigits = 1
     , maxNumOfDigits = 3
-    , maxNumOfRetries = 1
+    , maxNumOfRetries = 5
     , numOfOperations = 10
     , currentOperation = Nothing
     , pendingOperations = []
@@ -377,7 +377,7 @@ numberSettingsInput label ( minN, maxN ) value action =
         , placeholder = Nothing
         , label =
             Input.labelLeft [ Element.height Element.fill, Element.width Element.fill, Element.paddingXY 5 0 ] <|
-                Element.el [ Element.centerY, Font.size 20, Font.family [ Font.typeface "Slabo 27px", Font.serif ] ] <|
+                Element.el [ Element.centerY, Font.size 20, Font.family [ Font.typeface "Montserrat", Font.serif ] ] <|
                     Element.text label
         }
 
@@ -403,9 +403,9 @@ frameButton label onpress =
 frameLine : String -> ( String, Element.Color ) -> Element.Element Msg
 frameLine label ( value, valueColor ) =
     Element.row [ Element.width Element.fill, Element.spacing 5 ]
-        [ Element.el [ Element.centerY, Font.size 20, Font.family [ Font.typeface "Slabo 27px", Font.serif ] ] <|
+        [ Element.el [ Element.centerY, Font.size 20, Font.family [ Font.typeface "Montserrat", Font.serif ] ] <|
             Element.text label
-        , Element.el [ Font.color valueColor, Element.alignRight, Element.centerY, Font.size 20, Font.family [ Font.typeface "Slabo 27px", Font.serif ] ] <|
+        , Element.el [ Font.color valueColor, Element.alignRight, Element.centerY, Font.size 20, Font.family [ Font.typeface "Montserrat", Font.serif ] ] <|
             Element.text value
         ]
 
@@ -515,14 +515,14 @@ gamePageView m =
             , Element.htmlAttribute <| Html.id "multiplication"
             ]
             [ if op.retries >= m.maxNumOfRetries then
-                Element.row [ Element.alignTop, Element.width Element.fill, Element.paddingXY 0 19 ]
+                Element.row [ Element.spacing (20 - (remainderBy 20 <| m.width // 2) - 4), Element.alignTop, Element.width Element.fill, Element.paddingXY 0 19 ]
                     [ withHeader "Twoja odpowiedź" (Element.rgb 1 0 0) <|
                         Element.map GameMsg <|
-                            Multiplication.calculationView m.game (m.width // 2)
+                            Multiplication.calculationView m.game (m.width // 2 - 10)
                     , Element.el [ Element.centerX, Border.width 2, Border.solid, Element.height Element.fill ] Element.none
                     , withHeader "Poprawna odpowiedź" (Element.rgb 0 1 0) <|
                         Element.map GameMsg <|
-                            Multiplication.correctCalculationView m.game (m.width // 2)
+                            Multiplication.correctCalculationView m.game (m.width // 2 - 10)
                     ]
 
               else
@@ -553,12 +553,12 @@ withHeader txt clr el =
 arrowKeysView : Element.Element Msg
 arrowKeysView =
     Element.column [ Element.spacing 10, Element.padding 10, Element.alignRight, Element.alignBottom ]
-        [ arrowKeyButton "🡅" (GameMsg <| Multiplication.Focus Multiplication.FocusUp)
+        [ arrowKeyButton "▲" (GameMsg <| Multiplication.Focus Multiplication.FocusUp)
         , Element.row [ Element.width Element.fill, Element.spacing 60 ]
-            [ arrowKeyButton "🡄" (GameMsg <| Multiplication.Focus Multiplication.FocusLeft)
-            , arrowKeyButton "🡆" (GameMsg <| Multiplication.Focus Multiplication.FocusRight)
+            [ arrowKeyButton "◀" (GameMsg <| Multiplication.Focus Multiplication.FocusLeft)
+            , arrowKeyButton "▶" (GameMsg <| Multiplication.Focus Multiplication.FocusRight)
             ]
-        , arrowKeyButton "🡇" (GameMsg <| Multiplication.Focus Multiplication.FocusDown)
+        , arrowKeyButton "▼" (GameMsg <| Multiplication.Focus Multiplication.FocusDown)
         , arrowKeysViewHint "Enter wywołuje sprawdzenie"
         , arrowKeysViewHint "Używaj strzałek by się poruszać"
         ]
@@ -589,7 +589,7 @@ arrowKeysViewHint =
         [ Element.width Element.fill
         , Font.alignRight
         , Font.size 20
-        , Font.family [ Font.typeface "Slabo 27px", Font.serif ]
+        , Font.family [ Font.typeface "Montserrat", Font.serif ]
         ]
         << Element.text
 
@@ -659,6 +659,6 @@ operationLine =
     Element.el
         [ Element.centerX
         , Font.size 20
-        , Font.family [ Font.typeface "Slabo 27px", Font.serif ]
+        , Font.family [ Font.typeface "Montserrat", Font.serif ]
         ]
         << Element.text

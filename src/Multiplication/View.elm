@@ -248,7 +248,7 @@ correctCalculationView m w =
         ]
     <|
         Element.column
-            [ centerXbyCols resultColsNum w ]
+            (centerXbyCols resultColsNum w)
             ((List.reverse <|
                 List.map
                     (renderNumberRow
@@ -438,7 +438,7 @@ calculationView m w =
         ]
     <|
         Keyed.column
-            [ centerXbyCols resultColsNum w ]
+            (centerXbyCols resultColsNum w)
             (( rowId (UpperRow upperRowsLen)
              , animatedInputRow
                 { rid = UpperRow upperRowsLen
@@ -526,25 +526,24 @@ calculationView m w =
             )
 
 
-centerXbyCols : Int -> Int -> Element.Attribute Msg
+centerXbyCols : Int -> Int -> List (Element.Attribute Msg)
 centerXbyCols cols w =
     let
         width =
             w - remainderBy 40 w
 
-        paddingXY =
+        paddingX =
             if remainderBy 2 cols == 0 then
                 (width - cols * 20) // 2
 
             else
                 (width - (cols + 1) * 20) // 2
     in
-    Element.paddingEach
-        { top = 19
-        , bottom = 19
-        , left = paddingXY
-        , right = paddingXY
-        }
+    if w <= 0 then
+        [ Element.centerX, Element.paddingXY 0 19 ]
+
+    else
+        [ Element.paddingXY paddingX 19 ]
 
 
 operatorRowStyle : List (Element.Attribute Msg)
@@ -628,8 +627,8 @@ renderInputRow timeline opts elements mdiff =
                              , Element.mouseOver [ Background.color (Element.rgba 1 1 1 0.25) ]
                              , Events.onFocus <| ForceFocus cid
                              , Element.htmlAttribute <| Html.id elId
-                             , Element.htmlAttribute <| Html.style "inputmode" "numeric"
-                             , Element.htmlAttribute <| Html.style "pattern" "[0-9]?"
+                             , Element.htmlAttribute <| Html.attribute "inputmode" "numeric"
+                             , Element.htmlAttribute <| Html.pattern "[0-9]?"
                              , Element.htmlAttribute
                                 (Keyboard.on Keyboard.Keydown
                                     [ ( ArrowUp, Focus FocusUp )
