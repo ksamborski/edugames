@@ -137,7 +137,7 @@ update msg m =
                     { op | upperRows = nonzeroUpperRows }
 
                 err =
-                    errors (input2multiplication newOp)
+                    errors m.checkUpperrows (input2multiplication newOp)
             in
             ( { m
                 | currentOperation = newOp

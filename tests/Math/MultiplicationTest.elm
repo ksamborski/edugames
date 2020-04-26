@@ -85,7 +85,7 @@ errorsSuite =
             )
             "checking correct result"
           <|
-            \( n, m ) -> Multiplication.errors (Multiplication.correctResult n m) |> Expect.equal Nothing
+            \( n, m ) -> Multiplication.errors True (Multiplication.correctResult n m) |> Expect.equal Nothing
         , test "83 * 92 (skipping 0s in the upper rows)" <|
             \_ ->
                 let
@@ -98,7 +98,7 @@ errorsSuite =
                         , finalResult = [ 7, 6, 3, 6 ]
                         }
                 in
-                Multiplication.errors result |> Expect.equal Nothing
+                Multiplication.errors True result |> Expect.equal Nothing
         , fuzz
             (Fuzz.map2 Tuple.pair
                 (Fuzz.intRange 1 100000)
@@ -111,7 +111,7 @@ errorsSuite =
                     correct =
                         Multiplication.correctResult n m
                 in
-                Multiplication.errors { correct | multiplicand = n + 1 } |> Expect.notEqual Nothing
+                Multiplication.errors True { correct | multiplicand = n + 1 } |> Expect.notEqual Nothing
         , test "83 * 92 empty upper rows" <|
             \_ ->
                 let
@@ -124,7 +124,7 @@ errorsSuite =
                         , finalResult = [ 7, 6, 3, 6 ]
                         }
                 in
-                Multiplication.errors result |> Expect.notEqual Nothing
+                Multiplication.errors True result |> Expect.notEqual Nothing
         , test "1724 * 5622" <|
             \_ ->
                 let
@@ -147,7 +147,7 @@ errorsSuite =
                         , finalResult = [ 9, 6, 9, 2, 3, 2, 8 ]
                         }
                 in
-                Multiplication.errors result |> Expect.equal Nothing
+                Multiplication.errors True result |> Expect.equal Nothing
         , test "1724 * 5622 empty upper rows" <|
             \_ ->
                 let
@@ -165,7 +165,7 @@ errorsSuite =
                         , finalResult = [ 9, 6, 9, 2, 3, 2, 8 ]
                         }
                 in
-                Multiplication.errors result
+                Multiplication.errors True result
                     |> Maybe.map .upperRows
                     |> Expect.equal
                         (Just
@@ -175,6 +175,26 @@ errorsSuite =
                             , [ IsOk 0, IsWrong 0 3, IsOk 0, IsOk 0, IsOk 0 ]
                             ]
                         )
+        , test "1724 * 5622 empty upper rows without checking upper rows" <|
+            \_ ->
+                let
+                    result =
+                        { multiplicand = 1724
+                        , multiplier = 5622
+                        , resultRows =
+                            [ [ 3, 4, 4, 8 ]
+                            , [ 3, 4, 4, 8, 0 ]
+                            , [ 1, 0, 3, 4, 4, 0, 0 ]
+                            , [ 8, 6, 2, 0, 0, 0, 0 ]
+                            ]
+                        , upperRows = []
+                        , sumUpperRow = [ 0, 0, 1, 1, 1, 0, 0 ]
+                        , finalResult = [ 9, 6, 9, 2, 3, 2, 8 ]
+                        }
+                in
+                Multiplication.errors False result
+                    |> Maybe.map .upperRows
+                    |> Expect.equal Nothing
         , test "1724 * 5622 partial first upper row" <|
             \_ ->
                 let
@@ -192,7 +212,7 @@ errorsSuite =
                         , finalResult = [ 9, 6, 9, 2, 3, 2, 8 ]
                         }
                 in
-                Multiplication.errors result
+                Multiplication.errors True result
                     |> Maybe.map .upperRows
                     |> Expect.equal
                         (Just
@@ -202,4 +222,24 @@ errorsSuite =
                             , [ IsOk 0, IsWrong 0 3, IsOk 0, IsOk 0, IsOk 0 ]
                             ]
                         )
+        , test "1724 * 5622 partial first upper row without checking upper rows" <|
+            \_ ->
+                let
+                    result =
+                        { multiplicand = 1724
+                        , multiplier = 5622
+                        , resultRows =
+                            [ [ 3, 4, 4, 8 ]
+                            , [ 3, 4, 4, 8, 0 ]
+                            , [ 1, 0, 3, 4, 4, 0, 0 ]
+                            , [ 8, 6, 2, 0, 0, 0, 0 ]
+                            ]
+                        , upperRows = [ [ 0, 0, 0, 2, 0 ] ]
+                        , sumUpperRow = [ 0, 0, 1, 1, 1, 0, 0 ]
+                        , finalResult = [ 9, 6, 9, 2, 3, 2, 8 ]
+                        }
+                in
+                Multiplication.errors False result
+                    |> Maybe.map .upperRows
+                    |> Expect.equal Nothing
         ]

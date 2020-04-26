@@ -25,6 +25,7 @@ type alias Model =
     , passed : Bool
     , errors : Animator.Timeline (Maybe AnnotatedMultiplication)
     , focused : Focused
+    , checkUpperrows : Bool
     }
 
 
@@ -141,6 +142,7 @@ emptyModel =
     , passed = False
     , errors = Animator.init Nothing
     , focused = FocusedNothing
+    , checkUpperrows = False
     }
 
 

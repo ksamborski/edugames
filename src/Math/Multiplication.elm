@@ -272,8 +272,8 @@ maxColLen lst =
     Maybe.withDefault 1 <| List.maximum <| List.map List.length lst
 
 
-errors : Multiplication -> Maybe AnnotatedMultiplication
-errors m =
+errors : Bool -> Multiplication -> Maybe AnnotatedMultiplication
+errors checkUpperrows m =
     let
         correct =
             correctResult m.multiplicand m.multiplier
@@ -286,7 +286,11 @@ errors m =
                     List.map (\( a, b ) -> diffList True a b) <| zip givenResRows wantedResRows
                 , upperRows = transpose <| fixedRows False 1 (IsOk 0) upperCols
                 , sumUpperRow =
-                    diffList True m.sumUpperRow correct.sumUpperRow
+                    if checkUpperrows then
+                        diffList True m.sumUpperRow correct.sumUpperRow
+
+                    else
+                        diffList True m.sumUpperRow m.sumUpperRow
                 , finalResult =
                     diffList True m.finalResult correct.finalResult
             }
@@ -309,7 +313,11 @@ errors m =
             equalLenList False [] m.resultRows correct.resultRows
 
         ( givenUpRows, wantedUpRows ) =
-            equalLenList False [] m.upperRows correct.upperRows
+            if checkUpperrows then
+                equalLenList False [] m.upperRows correct.upperRows
+
+            else
+                ( m.upperRows, m.upperRows )
 
         ok =
             List.all identity

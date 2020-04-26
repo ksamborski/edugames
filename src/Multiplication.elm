@@ -30,6 +30,7 @@ type alias Model =
     , page : Page
     , width : Int
     , height : Int
+    , detailedChecking : Bool
     }
 
 
@@ -57,6 +58,7 @@ type Msg
     | ChangeMaxNumOfDigits Int
     | ChangeMaxNumOfRetries Int
     | ChangeNumOfOperations Int
+    | ChangeDetailedChecking Bool
     | Start
     | StartOperation Time.Posix
     | SkipOperation
@@ -91,6 +93,7 @@ emptyModel =
     , page = SettingsPage
     , width = 0
     , height = 0
+    , detailedChecking = False
     }
 
 
@@ -177,7 +180,7 @@ update msg m =
             ( { m
                 | currentOperation = Just { op | timeStart = time }
                 , page = GamePage
-                , game = g
+                , game = { g | checkUpperrows = m.detailedChecking }
               }
             , Cmd.batch
                 [ Cmd.map GameMsg cmds
@@ -260,6 +263,9 @@ update msg m =
 
         ChangeNumOfOperations n ->
             ( { m | numOfOperations = n }, Cmd.none )
+
+        ChangeDetailedChecking checked ->
+            ( { m | detailedChecking = checked }, Cmd.none )
 
         Start ->
             ( m
@@ -348,6 +354,7 @@ settingsPageView m =
         , numberSettingsInput "Maksymalna liczba cyfr:" ( m.minNumOfDigits, 5 ) m.maxNumOfDigits ChangeMaxNumOfDigits
         , numberSettingsInput "Maksymalna liczba prób:" ( 1, 10 ) m.maxNumOfRetries ChangeMaxNumOfRetries
         , numberSettingsInput "Liczba działań:" ( 1, 100 ) m.numOfOperations ChangeNumOfOperations
+        , settingsCheckbox "Szczegółowe sprawdzanie:" m.detailedChecking ChangeDetailedChecking
         , frameButton "Start" Start
         ]
 
@@ -362,6 +369,20 @@ header =
         , Element.paddingEach { top = 0, right = 0, left = 0, bottom = 15 }
         ]
         << Element.text
+
+
+settingsCheckbox : String -> Bool -> (Bool -> Msg) -> Element.Element Msg
+settingsCheckbox label val act =
+    Input.checkbox
+        []
+        { onChange = act
+        , icon = Input.defaultCheckbox
+        , checked = val
+        , label =
+            Input.labelLeft [ Element.height Element.fill, Element.width Element.fill, Element.paddingXY 5 0 ] <|
+                Element.el [ Element.centerY, Font.size 20, Font.family [ Font.typeface "Montserrat", Font.serif ] ] <|
+                    Element.text label
+        }
 
 
 numberSettingsInput : String -> ( Int, Int ) -> Int -> (Int -> Msg) -> Element.Element Msg
@@ -454,6 +475,14 @@ gameFinishedPageView m =
         , frameLine "Liczba błędnych odpowiedzi:" ( String.fromInt (m.numOfOperations - passed), Element.rgb 1 0 0 )
         , frameLine "Liczba prób:" ( String.fromInt retries, Element.rgb 0 0 0 )
         , frameLine "Czas całkowity:" ( timeString minTime maxTime, Element.rgb 0 0 0 )
+        , frameLine "Szczegółowe sprawdzanie:"
+            ( if m.detailedChecking then
+                "Tak"
+
+              else
+                "Nie"
+            , Element.rgb 0 0 0
+            )
         , frameButton "Nowa gra" NewGame
         ]
 
