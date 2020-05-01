@@ -1,4 +1,4 @@
-module Multiplication.View exposing (calculationView, correctCalculationView, init, setUpAnimator, update)
+module Multiplication.View exposing (calculationView, correctCalculationView, init, readOnlyCalculationView, setUpAnimator, update)
 
 import Animator
 import Browser.Dom as Dom
@@ -221,6 +221,85 @@ zipWithDefault defa defb a b =
         zip a (b ++ List.repeat (aLen - bLen) defb)
 
 
+readOnlyCalculationView : Model -> Int -> Element.Element Msg
+readOnlyCalculationView m w =
+    let
+        op =
+            m.currentOperation
+
+        multiplicandDigits =
+            decimals op.multiplicand
+
+        multiplierDigits =
+            decimals op.multiplier
+
+        resultColsNum =
+            List.length multiplierDigits + List.length multiplicandDigits
+
+        resultRowsLen =
+            List.length op.resultRows
+
+        moreThan1ResultRow =
+            List.length op.resultRows > 1
+    in
+    Element.el
+        [ Element.width Element.fill
+        , Element.height Element.fill
+        ]
+    <|
+        Element.column
+            (centerXbyCols resultColsNum w)
+            ((List.reverse <|
+                List.map
+                    (renderReadOnlyInputNumberRow
+                        { style = upperRowNumberStyle
+                        , operator = Nothing
+                        }
+                    )
+                    op.upperRows
+             )
+                ++ [ textNumber multiplicandDigits
+                   , operationLine "×" [ textNumber multiplierDigits ]
+                   ]
+                ++ (if moreThan1ResultRow then
+                        [ renderReadOnlyInputNumberRow
+                            { style = upperRowNumberStyle
+                            , operator = Nothing
+                            }
+                            op.sumUpperRow
+                        ]
+
+                    else
+                        []
+                   )
+                ++ List.indexedMap
+                    (\i r ->
+                        renderReadOnlyInputNumberRow
+                            { style = resultRowStyle
+                            , operator =
+                                if moreThan1ResultRow && i == resultRowsLen - 1 then
+                                    Just "+"
+
+                                else
+                                    Nothing
+                            }
+                            r
+                    )
+                    op.resultRows
+                ++ (if moreThan1ResultRow then
+                        [ renderReadOnlyInputNumberRow
+                            { style = resultRowStyle
+                            , operator = Nothing
+                            }
+                            op.finalResult
+                        ]
+
+                    else
+                        []
+                   )
+            )
+
+
 correctCalculationView : Model -> Int -> Element.Element Msg
 correctCalculationView m w =
     let
@@ -310,6 +389,60 @@ correctCalculationView m w =
                         []
                    )
             )
+
+
+type alias RenderReadOnlyInputNumberRowOptions =
+    { style : List (Element.Attribute Msg)
+    , operator : Maybe String
+    }
+
+
+renderReadOnlyInputNumberRow : RenderReadOnlyInputNumberRowOptions -> List (Maybe Int) -> Element.Element Msg
+renderReadOnlyInputNumberRow opts elements =
+    let
+        elLen =
+            List.length elements
+
+        elStyle =
+            [ Element.width (Element.px 20)
+            , Font.color (Element.rgb255 200 10 10)
+            , Element.padding 0
+            , Border.width 0
+            , Element.centerY
+            ]
+                ++ opts.style
+    in
+    Element.row
+        ([ Element.width Element.fill
+         , Font.variant Font.tabularNumbers
+         , Element.spacing 0
+         , Element.padding 0
+         , Element.height (Element.px 20)
+         ]
+            ++ (case opts.operator of
+                    Just op ->
+                        operatorRowStyle
+
+                    Nothing ->
+                        []
+               )
+        )
+    <|
+        (case opts.operator of
+            Just op ->
+                operatorEl op
+
+            Nothing ->
+                Element.none
+        )
+            :: List.map
+                (\el ->
+                    Element.el elStyle <|
+                        Element.text <|
+                            Maybe.withDefault "" <|
+                                Maybe.map String.fromInt el
+                )
+                elements
 
 
 type alias RenderNumberRowOptions =
@@ -431,6 +564,26 @@ calculationView m w =
                     , sumUpperRow = Just d.sumUpperRow
                     , finalResult = Just d.finalResult
                     }
+
+        filledUpperRows =
+            List.reverse
+                (List.indexedMap
+                    (\i ( r, d ) ->
+                        ( rowId (UpperRow i)
+                        , animatedInputRow
+                            { rid = UpperRow i
+                            , numEl = digitsColsNum
+                            , style = upperRowStyle
+                            , operator = Nothing
+                            , action = UpperRowInput i
+                            }
+                            r
+                            d
+                        )
+                    )
+                 <|
+                    zipWithDefault [] Nothing m.currentOperation.upperRows diff.upperRows
+                )
     in
     Element.el
         [ Element.width Element.fill
@@ -450,24 +603,7 @@ calculationView m w =
                 []
                 Nothing
              )
-                :: List.reverse
-                    (List.indexedMap
-                        (\i ( r, d ) ->
-                            ( rowId (UpperRow i)
-                            , animatedInputRow
-                                { rid = UpperRow i
-                                , numEl = digitsColsNum
-                                , style = upperRowStyle
-                                , operator = Nothing
-                                , action = UpperRowInput i
-                                }
-                                r
-                                d
-                            )
-                        )
-                     <|
-                        zipWithDefault [] Nothing m.currentOperation.upperRows diff.upperRows
-                    )
+                :: filledUpperRows
                 ++ [ ( "multiplicand", textNumber multiplicandDigits )
                    , ( "multiplier", operationLine "×" [ textNumber multiplierDigits ] )
                    ]

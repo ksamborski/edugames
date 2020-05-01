@@ -11,6 +11,7 @@ import Element.Font as Font
 import Element.Input as Input
 import Html exposing (Html)
 import Html.Attributes as Html
+import Math.Multiplication exposing (AnnotatedMultiplication)
 import Multiplication.Types as Multiplication
 import Multiplication.View as Multiplication
 import Random
@@ -19,8 +20,7 @@ import Time exposing (Posix)
 
 
 type alias Model =
-    { game : Multiplication.Model
-    , minNumOfDigits : Int
+    { minNumOfDigits : Int
     , maxNumOfDigits : Int
     , maxNumOfRetries : Int
     , numOfOperations : Int
@@ -31,6 +31,7 @@ type alias Model =
     , width : Int
     , height : Int
     , detailedChecking : Bool
+    , defaultAnimator : Animator.Timeline (Maybe AnnotatedMultiplication)
     }
 
 
@@ -38,6 +39,7 @@ type Page
     = SettingsPage
     | GamePage
     | GameFinishedPage
+    | ReviewPage
 
 
 type alias Operation =
@@ -47,6 +49,7 @@ type alias Operation =
     , multiplier : Int
     , retries : Int
     , passed : Bool
+    , game : Multiplication.Model
     }
 
 
@@ -64,26 +67,30 @@ type Msg
     | SkipOperation
     | EndOperation Time.Posix
     | NewGame
+    | Review
+    | ReviewPrevOp
+    | ReviewNextOp
+    | ReviewExit
     | GotSize Dom.Element
     | Resized
     | NoOp
 
 
-emptyOperation : Operation
-emptyOperation =
+emptyOperation : Int -> Int -> Operation
+emptyOperation n m =
     { timeStart = Time.millisToPosix 0
     , timeEnd = Time.millisToPosix 0
-    , multiplicand = 0
-    , multiplier = 0
+    , multiplicand = n
+    , multiplier = m
     , retries = 0
     , passed = False
+    , game = Multiplication.emptyModel
     }
 
 
 emptyModel : Model
 emptyModel =
-    { game = Multiplication.emptyModel
-    , minNumOfDigits = 1
+    { minNumOfDigits = 1
     , maxNumOfDigits = 3
     , maxNumOfRetries = 5
     , numOfOperations = 10
@@ -94,6 +101,7 @@ emptyModel =
     , width = 0
     , height = 0
     , detailedChecking = False
+    , defaultAnimator = Animator.init Nothing
     }
 
 
@@ -161,9 +169,7 @@ update msg m =
             let
                 ops =
                     List.map
-                        (\( n1, n2 ) ->
-                            { emptyOperation | multiplicand = max n1 n2, multiplier = min n1 n2 }
-                        )
+                        (\( n1, n2 ) -> emptyOperation (max n1 n2) (min n1 n2))
                         lst
             in
             ( { m
@@ -175,87 +181,95 @@ update msg m =
             )
 
         StartOperation time ->
-            let
-                op =
-                    Maybe.withDefault emptyOperation m.currentOperation
+            case m.currentOperation of
+                Just op ->
+                    let
+                        ( g, cmds ) =
+                            Multiplication.init op.multiplicand op.multiplier
+                    in
+                    ( { m
+                        | currentOperation = Just { op | timeStart = time, game = { g | checkUpperrows = m.detailedChecking } }
+                        , page = GamePage
+                      }
+                    , Cmd.batch
+                        [ Cmd.map GameMsg cmds
+                        , Task.attempt
+                            (Result.withDefault NoOp << Result.map GotSize)
+                            (Dom.getElement "multiplication")
+                        ]
+                    )
 
-                ( g, cmds ) =
-                    Multiplication.init op.multiplicand op.multiplier
-            in
-            ( { m
-                | currentOperation = Just { op | timeStart = time }
-                , page = GamePage
-                , game = { g | checkUpperrows = m.detailedChecking }
-              }
-            , Cmd.batch
-                [ Cmd.map GameMsg cmds
-                , Task.attempt
-                    (Result.withDefault NoOp << Result.map GotSize)
-                    (Dom.getElement "multiplication")
-                ]
-            )
+                Nothing ->
+                    ( m, Cmd.none )
 
         SkipOperation ->
             ( m, Task.attempt (EndOperation << Result.withDefault (Time.millisToPosix 0)) Time.now )
 
         EndOperation time ->
-            let
-                op =
-                    Maybe.withDefault emptyOperation m.currentOperation
-            in
-            case List.head m.pendingOperations of
-                Just pending ->
-                    ( { m
-                        | doneOperations = { op | timeEnd = time, passed = m.game.passed } :: m.doneOperations
-                        , currentOperation = List.head m.pendingOperations
-                        , pendingOperations = Maybe.withDefault [] <| List.tail m.pendingOperations
-                      }
-                    , Task.attempt (StartOperation << Result.withDefault (Time.millisToPosix 0)) Time.now
-                    )
+            case m.currentOperation of
+                Just op ->
+                    case List.head m.pendingOperations of
+                        Just pending ->
+                            ( { m
+                                | doneOperations = { op | timeEnd = time, passed = op.game.passed } :: m.doneOperations
+                                , currentOperation = List.head m.pendingOperations
+                                , pendingOperations = Maybe.withDefault [] <| List.tail m.pendingOperations
+                              }
+                            , Task.attempt (StartOperation << Result.withDefault (Time.millisToPosix 0)) Time.now
+                            )
+
+                        Nothing ->
+                            ( { m
+                                | doneOperations = { op | timeEnd = time, passed = op.game.passed } :: m.doneOperations
+                                , currentOperation = Nothing
+                                , pendingOperations = []
+                                , page = GameFinishedPage
+                              }
+                            , Cmd.none
+                            )
 
                 Nothing ->
-                    ( { m
-                        | doneOperations = { op | timeEnd = time, passed = m.game.passed } :: m.doneOperations
-                        , currentOperation = Nothing
-                        , pendingOperations = []
-                        , page = GameFinishedPage
-                      }
-                    , Cmd.none
-                    )
+                    ( m, Cmd.none )
 
         AnimationTick newTime ->
             ( Animator.update newTime animator m, Cmd.none )
 
         GameMsg Multiplication.CheckResult ->
-            let
-                op =
-                    Maybe.withDefault emptyOperation m.currentOperation
-            in
-            if op.retries >= m.maxNumOfRetries then
-                ( m, Cmd.none )
+            case m.currentOperation of
+                Just op ->
+                    if op.retries >= m.maxNumOfRetries then
+                        ( m, Cmd.none )
 
-            else
-                let
-                    ( g, cmds ) =
-                        Multiplication.update Multiplication.CheckResult m.game
-                in
-                ( { m | game = g, currentOperation = Just { op | retries = min (op.retries + 1) m.maxNumOfRetries } }
-                , Cmd.batch
-                    [ Cmd.map GameMsg cmds
-                    , if g.passed then
-                        Task.attempt (EndOperation << Result.withDefault (Time.millisToPosix 0)) Time.now
+                    else
+                        let
+                            ( g, cmds ) =
+                                Multiplication.update Multiplication.CheckResult op.game
+                        in
+                        ( { m | currentOperation = Just { op | game = g, retries = min (op.retries + 1) m.maxNumOfRetries } }
+                        , Cmd.batch
+                            [ Cmd.map GameMsg cmds
+                            , if g.passed then
+                                Task.attempt (EndOperation << Result.withDefault (Time.millisToPosix 0)) Time.now
 
-                      else
-                        Cmd.none
-                    ]
-                )
+                              else
+                                Cmd.none
+                            ]
+                        )
+
+                Nothing ->
+                    ( m, Cmd.none )
 
         GameMsg gmsg ->
-            let
-                ( g, cmds ) =
-                    Multiplication.update gmsg m.game
-            in
-            ( { m | game = g }, Cmd.map GameMsg cmds )
+            case m.currentOperation of
+                Just op ->
+                    let
+                        ( g, cmds ) =
+                            Multiplication.update gmsg op.game
+                    in
+                    ( { m | currentOperation = Just { op | game = g } }, Cmd.map GameMsg cmds )
+
+                Nothing ->
+                    ( m, Cmd.none )
 
         ChangeMinNumOfDigits n ->
             ( { m | minNumOfDigits = n }, Cmd.none )
@@ -284,6 +298,66 @@ update msg m =
             , Cmd.none
             )
 
+        Review ->
+            ( { m
+                | currentOperation = List.head m.doneOperations
+                , doneOperations = Maybe.withDefault [] <| List.tail m.doneOperations
+                , page = ReviewPage
+              }
+            , Cmd.none
+            )
+
+        ReviewPrevOp ->
+            if List.isEmpty m.doneOperations then
+                ( m, Cmd.none )
+
+            else
+                ( { m
+                    | currentOperation = List.head m.doneOperations
+                    , doneOperations = Maybe.withDefault [] <| List.tail m.doneOperations
+                    , pendingOperations =
+                        case m.currentOperation of
+                            Just op ->
+                                op :: m.pendingOperations
+
+                            Nothing ->
+                                m.pendingOperations
+                  }
+                , Cmd.none
+                )
+
+        ReviewNextOp ->
+            if List.isEmpty m.pendingOperations then
+                ( m, Cmd.none )
+
+            else
+                ( { m
+                    | currentOperation = List.head m.pendingOperations
+                    , doneOperations =
+                        case m.currentOperation of
+                            Just op ->
+                                op :: m.doneOperations
+
+                            Nothing ->
+                                m.doneOperations
+                    , pendingOperations = Maybe.withDefault [] <| List.tail m.pendingOperations
+                  }
+                , Cmd.none
+                )
+
+        ReviewExit ->
+            ( { m
+                | currentOperation = Nothing
+                , doneOperations =
+                    List.reverse m.pendingOperations
+                        ++ (Maybe.withDefault [] <| Maybe.map List.singleton m.currentOperation)
+                        ++ m.doneOperations
+                , pendingOperations = []
+                , page = GameFinishedPage
+              }
+            , Cmd.none
+            )
+
         GotSize el ->
             ( { m | width = floor el.element.width, height = floor el.element.height }, Cmd.none )
 
@@ -300,7 +374,23 @@ update msg m =
 
 animator : Animator.Animator Model
 animator =
-    Multiplication.setUpAnimator .game (\m g -> { m | game = g }) Animator.animator
+    Multiplication.setUpAnimator
+        (\m ->
+            let
+                em =
+                    Multiplication.emptyModel
+            in
+            Maybe.withDefault { em | errors = m.defaultAnimator } <| Maybe.map .game m.currentOperation
+        )
+        (\m g ->
+            case m.currentOperation of
+                Just op ->
+                    { m | currentOperation = Just { op | game = g } }
+
+                Nothing ->
+                    { m | defaultAnimator = g.errors }
+        )
+        Animator.animator
 
 
 view : Model -> Html Msg
@@ -324,6 +414,9 @@ view m =
 
             GameFinishedPage ->
                 gameFinishedPageView m
+
+            ReviewPage ->
+                reviewPageView m
 
 
 frame : List (Element.Element Msg) -> Element.Element Msg
@@ -505,20 +598,12 @@ gameFinishedPageView m =
                 )
                 { passed = 0, retries = 0, minTime = 0, maxTime = 0 }
                 m.doneOperations
-
-        numFrom =
-            if m.minNumOfDigits <= 1 then
-                0
-
-            else
-                10 ^ (m.minNumOfDigits - 1)
-
-        numTo =
-            10 ^ m.maxNumOfDigits - 1
     in
     frame
         [ header "Koniec gry"
-        , frameLine "Przedział liczbowy:" ( "od " ++ String.fromInt numFrom ++ " do " ++ String.fromInt numTo, Element.rgb 0 0 0 )
+        , frameLine
+            "Przedział liczbowy:"
+            ( "od " ++ String.fromInt (minNumOfNDigits m.minNumOfDigits) ++ " do " ++ String.fromInt (maxNumOfNDigits m.maxNumOfDigits), Element.rgb 0 0 0 )
         , frameLine "Liczba działań:" ( String.fromInt m.numOfOperations, Element.rgb 0 0 0 )
         , frameLine "Liczba poprawnych odpowiedzi:" ( String.fromInt passed, Element.rgb 0 1 0 )
         , frameLine "Liczba błędnych odpowiedzi:" ( String.fromInt (m.numOfOperations - passed), Element.rgb 1 0 0 )
@@ -532,8 +617,79 @@ gameFinishedPageView m =
                 "Nie"
             , Element.rgb 0 0 0
             )
-        , frameButton "Nowa gra" NewGame
+        , Element.row [ Element.width Element.fill, Element.spacing 10 ]
+            [ frameButton "Nowa gra" NewGame
+            , frameButton "Przejrzyj odpowiedzi" Review
+            ]
         ]
+
+
+reviewPageView : Model -> Element.Element Msg
+reviewPageView m =
+    Element.row
+        [ Element.height Element.fill
+        , Element.width Element.fill
+        ]
+        [ reviewOperationView m
+        , Element.column
+            [ Element.height Element.fill
+            , Element.width Element.fill
+            , Element.htmlAttribute <| Html.id "multiplication"
+            ]
+            [ Element.map (always NoOp) <| resultView m
+            ]
+        ]
+
+
+reviewOperationView : Model -> Element.Element Msg
+reviewOperationView m =
+    let
+        pending =
+            List.length m.pendingOperations
+
+        done =
+            List.length m.doneOperations
+    in
+    case m.currentOperation of
+        Just cop ->
+            operationSidebar
+                [ header <|
+                    "Działanie "
+                        ++ String.fromInt (done + 1)
+                        ++ " / "
+                        ++ String.fromInt (pending + done + 1)
+                , operationLine <|
+                    "Czas: "
+                        ++ timeString
+                            (Time.posixToMillis cop.timeStart)
+                            (Time.posixToMillis cop.timeEnd)
+                , operationLine <| "Wykorzystano prób: " ++ String.fromInt cop.retries
+                , operationLine <|
+                    "Zaliczono: "
+                        ++ (if cop.passed then
+                                "tak"
+
+                            else
+                                "nie"
+                           )
+                , Element.row [ Element.width Element.fill, Element.spacing 5 ] <|
+                    (optionalEl (done > 0) <| operationButton "◀" ReviewPrevOp (Element.rgb255 200 200 200))
+                        :: (optionalEl (pending > 0) <| operationButton "▶" ReviewNextOp (Element.rgb255 200 200 200))
+                        :: []
+                , operationButton "Powrót" ReviewExit (Element.rgb255 250 90 90)
+                ]
+
+        Nothing ->
+            Element.none
+
+
+optionalEl : Bool -> Element.Element msg -> Element.Element msg
+optionalEl cond el =
+    if cond then
+        el
+
+    else
+        Element.none
 
 
 timeString : Int -> Int -> String
@@ -578,39 +734,53 @@ timeString from to =
 
 gamePageView : Model -> Element.Element Msg
 gamePageView m =
-    let
-        op =
-            Maybe.withDefault emptyOperation m.currentOperation
-    in
-    Element.row
-        [ Element.height Element.fill
-        , Element.width Element.fill
-        ]
-        [ operationView m
-        , Element.column
-            [ Element.height Element.fill
-            , Element.width Element.fill
-            , Element.htmlAttribute <| Html.id "multiplication"
-            ]
-            [ if op.retries >= m.maxNumOfRetries then
-                Element.row [ Element.spacing (20 - (remainderBy 20 <| m.width // 2) - 4), Element.alignTop, Element.width Element.fill, Element.paddingXY 0 19 ]
-                    [ withHeader "Twoja odpowiedź" (Element.rgb 1 0 0) <|
-                        Element.map GameMsg <|
-                            Multiplication.calculationView m.game (m.width // 2 - 10)
-                    , Element.el [ Element.centerX, Border.width 2, Border.solid, Element.height Element.fill ] Element.none
-                    , withHeader "Poprawna odpowiedź" (Element.rgb 0 0.75 0) <|
-                        Element.map GameMsg <|
-                            Multiplication.correctCalculationView m.game (m.width // 2 - 10)
+    case m.currentOperation of
+        Just op ->
+            Element.row
+                [ Element.height Element.fill
+                , Element.width Element.fill
+                ]
+                [ operationView m
+                , Element.column
+                    [ Element.height Element.fill
+                    , Element.width Element.fill
+                    , Element.htmlAttribute <| Html.id "multiplication"
                     ]
+                    [ if op.retries >= m.maxNumOfRetries then
+                        Element.map GameMsg <| resultView m
 
-              else
-                Element.map GameMsg <| Multiplication.calculationView m.game m.width
-            , arrowKeysView
-            ]
-        ]
+                      else
+                        Element.map GameMsg <| Multiplication.calculationView op.game m.width
+                    , arrowKeysView
+                    ]
+                ]
+
+        Nothing ->
+            Element.none
 
 
-withHeader : String -> Element.Color -> Element.Element Msg -> Element.Element Msg
+resultView : Model -> Element.Element Multiplication.Msg
+resultView m =
+    case m.currentOperation of
+        Just op ->
+            Element.row
+                [ Element.spacing (20 - (remainderBy 20 <| m.width // 2) - 4)
+                , Element.alignTop
+                , Element.width Element.fill
+                , Element.paddingXY 0 19
+                ]
+                [ withHeader "Twoja odpowiedź" (Element.rgb 1 0 0) <|
+                    Multiplication.readOnlyCalculationView op.game (m.width // 2 - 10)
+                , Element.el [ Element.centerX, Border.width 2, Border.solid, Element.height Element.fill ] Element.none
+                , withHeader "Poprawna odpowiedź" (Element.rgb 0 0.75 0) <|
+                    Multiplication.correctCalculationView op.game (m.width // 2 - 10)
+                ]
+
+        Nothing ->
+            Element.none
+
+
+withHeader : String -> Element.Color -> Element.Element msg -> Element.Element msg
 withHeader txt clr el =
     Element.column
         [ Element.alignTop, Element.width Element.fill ]
@@ -685,10 +855,33 @@ operationView m =
 
         done =
             List.length m.doneOperations
-
-        cop =
-            Maybe.withDefault emptyOperation m.currentOperation
     in
+    case m.currentOperation of
+        Just cop ->
+            operationSidebar
+                [ header <|
+                    "Działanie "
+                        ++ String.fromInt (done + 1)
+                        ++ " / "
+                        ++ String.fromInt (pending + done + 1)
+                , operationLine <| "Pozostało prób: " ++ String.fromInt (m.maxNumOfRetries - cop.retries)
+                , Element.column
+                    [ Element.paddingXY 20 0, Element.width Element.fill, Element.spacing 20 ]
+                    [ if m.maxNumOfRetries - cop.retries > 0 then
+                        operationButton "Sprawdź" (GameMsg Multiplication.CheckResult) (Element.rgb255 200 200 200)
+
+                      else
+                        Element.none
+                    , operationButton "Pomiń" SkipOperation (Element.rgb255 250 90 90)
+                    ]
+                ]
+
+        Nothing ->
+            Element.none
+
+
+operationSidebar : List (Element.Element Msg) -> Element.Element Msg
+operationSidebar =
     Element.column
         [ Element.spacing 20
         , Element.padding 10
@@ -698,19 +891,6 @@ operationView m =
         , Element.width (Element.px operationViewWidth)
         , Element.height Element.fill
         ]
-        [ header <|
-            "Działanie "
-                ++ String.fromInt (done + 1)
-                ++ " / "
-                ++ String.fromInt (pending + done + 1)
-        , operationLine <| "Pozostało prób: " ++ String.fromInt (m.maxNumOfRetries - cop.retries)
-        , if m.maxNumOfRetries - cop.retries > 0 then
-            operationButton "Sprawdź" (GameMsg Multiplication.CheckResult) (Element.rgb255 200 200 200)
-
-          else
-            Element.none
-        , operationButton "Pomiń" SkipOperation (Element.rgb255 250 90 90)
-        ]
 
 
 operationButton : String -> Msg -> Element.Color -> Element.Element Msg
@@ -718,7 +898,7 @@ operationButton label action clr =
     Input.button
         [ Background.color clr
         , Element.height (Element.px 40)
-        , Element.width (Element.px 160)
+        , Element.width Element.fill
         , Element.focused []
         , Element.mouseOver [ Background.color (Element.rgb255 230 230 230) ]
         , Font.center
