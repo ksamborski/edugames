@@ -97,24 +97,29 @@ emptyModel =
     }
 
 
+minNumOfNDigits : Int -> Int
+minNumOfNDigits n =
+    if n <= 1 then
+        0
+
+    else
+        10 ^ (n - 1)
+
+
+maxNumOfNDigits : Int -> Int
+maxNumOfNDigits n =
+    if n < 1 then
+        0
+
+    else
+        10 ^ n - 1
+
+
 multNumGenerator : Int -> Int -> Random.Generator ( Int, Int )
 multNumGenerator digMin digMax =
-    let
-        numMin =
-            if digMax <= 1 then
-                0
-
-            else
-                10 ^ (digMax - 1)
-
-        numMax =
-            if digMax < 1 then
-                0
-
-            else
-                10 ^ digMax - 1
-    in
-    Random.pair (Random.int digMin digMax) (Random.int numMin numMax)
+    Random.pair
+        (Random.int digMin digMax)
+        (Random.int (minNumOfNDigits digMax) (maxNumOfNDigits digMax))
 
 
 multNumPairsGenerator : Int -> Int -> Int -> Random.Generator (List ( Int, Int ))
@@ -336,7 +341,7 @@ frame =
             , blur = 25
             , color = Element.rgb255 0 0 0
             }
-        , Element.width (Element.px 500)
+        , Element.width (Element.px 600)
         ]
         << Element.column
             [ Element.height Element.fill
@@ -350,11 +355,35 @@ settingsPageView : Model -> Element.Element Msg
 settingsPageView m =
     frame
         [ header "Mnożenie pisemne"
-        , numberSettingsInput "Minimalna liczba cyfr:" ( 1, 5 ) m.minNumOfDigits ChangeMinNumOfDigits
-        , numberSettingsInput "Maksymalna liczba cyfr:" ( m.minNumOfDigits, 5 ) m.maxNumOfDigits ChangeMaxNumOfDigits
-        , numberSettingsInput "Maksymalna liczba prób:" ( 1, 10 ) m.maxNumOfRetries ChangeMaxNumOfRetries
-        , numberSettingsInput "Liczba działań:" ( 1, 100 ) m.numOfOperations ChangeNumOfOperations
-        , settingsCheckbox "Szczegółowe sprawdzanie:" m.detailedChecking ChangeDetailedChecking
+        , numberSettingsInput
+            "Minimalna liczba cyfr:"
+            ("Losuje liczby od " ++ String.fromInt (minNumOfNDigits m.minNumOfDigits))
+            ( 1, 5 )
+            m.minNumOfDigits
+            ChangeMinNumOfDigits
+        , numberSettingsInput
+            "Maksymalna liczba cyfr:"
+            ("Losuje liczby do " ++ String.fromInt (maxNumOfNDigits m.maxNumOfDigits))
+            ( m.minNumOfDigits, 5 )
+            m.maxNumOfDigits
+            ChangeMaxNumOfDigits
+        , numberSettingsInput
+            "Maksymalna liczba prób:"
+            "Po wykorzystaniu wszystkich prób działanie zostanie oznaczone jako niepoprawnie wykonane i pojawi się poprawna odpowiedź"
+            ( 1, 10 )
+            m.maxNumOfRetries
+            ChangeMaxNumOfRetries
+        , numberSettingsInput
+            "Liczba działań:"
+            "Liczba mnożeń pisemnych do wykonania"
+            ( 1, 100 )
+            m.numOfOperations
+            ChangeNumOfOperations
+        , settingsCheckbox
+            "Szczegółowe sprawdzanie:"
+            "Uwzględnia także cyfry wprowadzane nad liczbami (kolorem czerwonym)"
+            m.detailedChecking
+            ChangeDetailedChecking
         , frameButton "Start" Start
         ]
 
@@ -371,8 +400,8 @@ header =
         << Element.text
 
 
-settingsCheckbox : String -> Bool -> (Bool -> Msg) -> Element.Element Msg
-settingsCheckbox label val act =
+settingsCheckbox : String -> String -> Bool -> (Bool -> Msg) -> Element.Element Msg
+settingsCheckbox label desc val act =
     Input.checkbox
         []
         { onChange = act
@@ -380,13 +409,23 @@ settingsCheckbox label val act =
         , checked = val
         , label =
             Input.labelLeft [ Element.height Element.fill, Element.width Element.fill, Element.paddingXY 5 0 ] <|
-                Element.el [ Element.centerY, Font.size 20, Font.family [ Font.typeface "Montserrat", Font.serif ] ] <|
-                    Element.text label
+                Element.column [ Element.height Element.fill, Element.width Element.fill, Element.spacing 5 ]
+                    [ Element.el [ Element.centerY, Font.size 20, Font.family [ Font.typeface "Montserrat", Font.serif ] ] <|
+                        Element.text label
+                    , Element.paragraph
+                        [ Element.centerY
+                        , Font.size 14
+                        , Font.family [ Font.typeface "Montserrat", Font.serif ]
+                        , Font.color (Element.rgb 0.2 0.2 0.2)
+                        ]
+                        [ Element.text desc
+                        ]
+                    ]
         }
 
 
-numberSettingsInput : String -> ( Int, Int ) -> Int -> (Int -> Msg) -> Element.Element Msg
-numberSettingsInput label ( minN, maxN ) value action =
+numberSettingsInput : String -> String -> ( Int, Int ) -> Int -> (Int -> Msg) -> Element.Element Msg
+numberSettingsInput label desc ( minN, maxN ) value action =
     Input.text
         [ Element.htmlAttribute (Html.type_ "number")
         , Element.htmlAttribute (Html.min <| String.fromInt minN)
@@ -398,8 +437,18 @@ numberSettingsInput label ( minN, maxN ) value action =
         , placeholder = Nothing
         , label =
             Input.labelLeft [ Element.height Element.fill, Element.width Element.fill, Element.paddingXY 5 0 ] <|
-                Element.el [ Element.centerY, Font.size 20, Font.family [ Font.typeface "Montserrat", Font.serif ] ] <|
-                    Element.text label
+                Element.column [ Element.height Element.fill, Element.width Element.fill, Element.spacing 5 ]
+                    [ Element.el [ Element.centerY, Font.size 20, Font.family [ Font.typeface "Montserrat", Font.serif ] ] <|
+                        Element.text label
+                    , Element.paragraph
+                        [ Element.centerY
+                        , Font.size 14
+                        , Font.family [ Font.typeface "Montserrat", Font.serif ]
+                        , Font.color (Element.rgb 0.2 0.2 0.2)
+                        ]
+                        [ Element.text desc
+                        ]
+                    ]
         }
 
 
