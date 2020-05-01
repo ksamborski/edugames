@@ -549,7 +549,7 @@ gamePageView m =
                         Element.map GameMsg <|
                             Multiplication.calculationView m.game (m.width // 2 - 10)
                     , Element.el [ Element.centerX, Border.width 2, Border.solid, Element.height Element.fill ] Element.none
-                    , withHeader "Poprawna odpowiedź" (Element.rgb 0 1 0) <|
+                    , withHeader "Poprawna odpowiedź" (Element.rgb 0 0.75 0) <|
                         Element.map GameMsg <|
                             Multiplication.correctCalculationView m.game (m.width // 2 - 10)
                     ]
