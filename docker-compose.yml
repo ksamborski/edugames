@@ -7,3 +7,9 @@ services:
     tty: true
     volumes:
       - $PWD:/app
+  nginx:
+    image: nginx:stable
+    ports:
+      - 8000:80
+    volumes:
+      - $PWD:/usr/share/nginx/html

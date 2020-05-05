@@ -8,6 +8,22 @@
   </head>
   <body style="width: 100%; height: 100%; font-family: 'Share Tech Mono', monospace;">
     <div id="game" style="width: 100%; height: 100%"></div>
-    <script>Elm.Multiplication.init({node: document.getElementById('game')});</script>
+    <script>
+      function loadJSON(path, callback) {   
+        var xobj = new XMLHttpRequest();
+        xobj.overrideMimeType("application/json");
+        xobj.open('GET', path, true);
+        xobj.onreadystatechange = function () {
+          if (xobj.readyState == 4 && xobj.status == "200") {
+            callback(JSON.parse(xobj.responseText));
+          }
+        };
+        xobj.send(null);  
+      }
+
+      loadJSON('/lang/pl.json', function(translations) {
+        Elm.Multiplication.init({flags: translations, node: document.getElementById('game')});
+      })
+    </script>
   </body>
 </html>

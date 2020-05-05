@@ -1,0 +1,52 @@
+{
+  "multiplication": {
+    "settingsPage": {
+      "header": "Mnożenie pisemne",
+      "minNumOfDigits": "Minimalna liczba cyfr:",
+      "minNumOfDigitsDesc": "Losuje liczby od {{n}}",
+      "maxNumOfDigits": "Maksymalna liczba cyfr:",
+      "maxNumOfDigitsDesc": "Losuje liczby do {{n}}",
+      "maxNumOfRetries": "Maksymalna liczba prób:",
+      "maxNumOfRetriesDesc": "Po wykorzystaniu wszystkich prób działanie zostanie oznaczone jako niepoprawnie wykonane i pojawi się poprawna odpowiedź",
+      "operationsNum": "Liczba działań:",
+      "operationsNumDesc": "Liczba mnożeń pisemnych do wykonania",
+      "detailedChecking": "Szczegółowe sprawdzanie:",
+      "detailedCheckingDesc": "Uwzględnia także cyfry wprowadzane nad liczbami (kolorem czerwonym)",
+      "start": "Start"
+    },
+    "gameFinishedPage": {
+      "header": "Koniec gry",
+      "numRange": "Przedział liczbowy:",
+      "numRangeDesc": "od {{from}} do {{to}}",
+      "operationsNum": "Liczba działań:",
+      "correctAnswersNum": "Liczba poprawnych odpowiedzi:",
+      "wrongAnswersNum": "Liczba błędnych odpowiedzi:",
+      "retriesNum": "Liczba prób:",
+      "totalTime": "Czas całkowity:",
+      "detailedChecking": "Szczegółowe sprawdzanie:",
+      "yes": "Tak",
+      "no": "Nie",
+      "newGame": "Nowa gra",
+      "seeAnswers": "Przejrzyj odpowiedzi"
+    },
+    "reviewPage": {
+      "operation": "Działanie {{num}} / {{total}}",
+      "time": "Czas: {{t}}",
+      "retries": "Wykorzystano prób: {{n}}",
+      "passed": "Zaliczono: {{result}}",
+      "yes": "tak",
+      "no": "nie",
+      "return": "Powrót"
+    },
+    "gamePage": {
+      "yourAnswer": "Twoja odpowiedź",
+      "correctAnswer": "Poprawna odpowiedź",
+      "enterHint": "Enter wywołuje sprawdzenie",
+      "arrowsHint": "Używaj strzałek by się poruszać",
+      "operation": "Działanie {{num}} / {{total}}",
+      "retriesLeft": "Pozostało prób: {{n}}",
+      "check": "Sprawdź",
+      "skip": "Pomiń"
+    }
+  }
+}

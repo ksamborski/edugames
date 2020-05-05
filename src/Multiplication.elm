@@ -11,12 +11,19 @@ import Element.Font as Font
 import Element.Input as Input
 import Html exposing (Html)
 import Html.Attributes as Html
+import I18Next
+import Json.Decode
+import Json.Encode
 import Math.Multiplication exposing (AnnotatedMultiplication)
 import Multiplication.Types as Multiplication
 import Multiplication.View as Multiplication
 import Random
 import Task
 import Time exposing (Posix)
+import Translations.Multiplication.GameFinishedPage as TrFinished
+import Translations.Multiplication.GamePage as TrGame
+import Translations.Multiplication.ReviewPage as TrReview
+import Translations.Multiplication.SettingsPage as TrSettings
 
 
 type alias Model =
@@ -32,6 +39,7 @@ type alias Model =
     , height : Int
     , detailedChecking : Bool
     , defaultAnimator : Animator.Timeline (Maybe AnnotatedMultiplication)
+    , translations : I18Next.Translations
     }
 
 
@@ -102,6 +110,7 @@ emptyModel =
     , height = 0
     , detailedChecking = False
     , defaultAnimator = Animator.init Nothing
+    , translations = I18Next.initialTranslations
     }
 
 
@@ -141,16 +150,28 @@ multNumPairsGenerator n digMin digMax =
             (multNumGenerator digMin digMax)
 
 
-main : Program () Model Msg
+init : Json.Encode.Value -> ( Model, Cmd Msg )
+init flags =
+    case Json.Decode.decodeValue I18Next.translationsDecoder flags of
+        Ok translations ->
+            ( { emptyModel | translations = translations }
+            , Task.attempt
+                (Result.withDefault NoOp << Result.map GotSize)
+                (Dom.getElement "multiplication")
+            )
+
+        Err _ ->
+            ( emptyModel
+            , Task.attempt
+                (Result.withDefault NoOp << Result.map GotSize)
+                (Dom.getElement "multiplication")
+            )
+
+
+main : Program Json.Encode.Value Model Msg
 main =
     Browser.element
-        { init =
-            \_ ->
-                ( emptyModel
-                , Task.attempt
-                    (Result.withDefault NoOp << Result.map GotSize)
-                    (Dom.getElement "multiplication")
-                )
+        { init = init
         , view = view
         , update = update
         , subscriptions =
@@ -447,37 +468,37 @@ frame =
 settingsPageView : Model -> Element.Element Msg
 settingsPageView m =
     frame
-        [ header "Mnożenie pisemne"
+        [ header (TrSettings.header m.translations)
         , numberSettingsInput
-            "Minimalna liczba cyfr:"
-            ("Losuje liczby od " ++ String.fromInt (minNumOfNDigits m.minNumOfDigits))
+            (TrSettings.minNumOfDigits m.translations)
+            (TrSettings.minNumOfDigitsDesc m.translations <| String.fromInt (minNumOfNDigits m.minNumOfDigits))
             ( 1, 5 )
             m.minNumOfDigits
             ChangeMinNumOfDigits
         , numberSettingsInput
-            "Maksymalna liczba cyfr:"
-            ("Losuje liczby do " ++ String.fromInt (maxNumOfNDigits m.maxNumOfDigits))
+            (TrSettings.maxNumOfDigits m.translations)
+            (TrSettings.maxNumOfDigitsDesc m.translations <| String.fromInt (maxNumOfNDigits m.maxNumOfDigits))
             ( m.minNumOfDigits, 5 )
             m.maxNumOfDigits
             ChangeMaxNumOfDigits
         , numberSettingsInput
-            "Maksymalna liczba prób:"
-            "Po wykorzystaniu wszystkich prób działanie zostanie oznaczone jako niepoprawnie wykonane i pojawi się poprawna odpowiedź"
+            (TrSettings.maxNumOfRetries m.translations)
+            (TrSettings.maxNumOfRetriesDesc m.translations)
             ( 1, 10 )
             m.maxNumOfRetries
             ChangeMaxNumOfRetries
         , numberSettingsInput
-            "Liczba działań:"
-            "Liczba mnożeń pisemnych do wykonania"
+            (TrSettings.operationsNum m.translations)
+            (TrSettings.operationsNumDesc m.translations)
             ( 1, 100 )
             m.numOfOperations
             ChangeNumOfOperations
         , settingsCheckbox
-            "Szczegółowe sprawdzanie:"
-            "Uwzględnia także cyfry wprowadzane nad liczbami (kolorem czerwonym)"
+            (TrSettings.detailedChecking m.translations)
+            (TrSettings.detailedCheckingDesc m.translations)
             m.detailedChecking
             ChangeDetailedChecking
-        , frameButton "Start" Start
+        , frameButton (TrSettings.start m.translations) Start
         ]
 
 
@@ -600,26 +621,30 @@ gameFinishedPageView m =
                 m.doneOperations
     in
     frame
-        [ header "Koniec gry"
+        [ header (TrFinished.header m.translations)
         , frameLine
-            "Przedział liczbowy:"
-            ( "od " ++ String.fromInt (minNumOfNDigits m.minNumOfDigits) ++ " do " ++ String.fromInt (maxNumOfNDigits m.maxNumOfDigits), Element.rgb 0 0 0 )
-        , frameLine "Liczba działań:" ( String.fromInt m.numOfOperations, Element.rgb 0 0 0 )
-        , frameLine "Liczba poprawnych odpowiedzi:" ( String.fromInt passed, Element.rgb 0 1 0 )
-        , frameLine "Liczba błędnych odpowiedzi:" ( String.fromInt (m.numOfOperations - passed), Element.rgb 1 0 0 )
-        , frameLine "Liczba prób:" ( String.fromInt retries, Element.rgb 0 0 0 )
-        , frameLine "Czas całkowity:" ( timeString minTime maxTime, Element.rgb 0 0 0 )
-        , frameLine "Szczegółowe sprawdzanie:"
+            (TrFinished.numRange m.translations)
+            ( TrFinished.numRangeDesc m.translations
+                (String.fromInt <| minNumOfNDigits m.minNumOfDigits)
+                (String.fromInt <| maxNumOfNDigits m.maxNumOfDigits)
+            , Element.rgb 0 0 0
+            )
+        , frameLine (TrFinished.operationsNum m.translations) ( String.fromInt m.numOfOperations, Element.rgb 0 0 0 )
+        , frameLine (TrFinished.correctAnswersNum m.translations) ( String.fromInt passed, Element.rgb 0 1 0 )
+        , frameLine (TrFinished.wrongAnswersNum m.translations) ( String.fromInt (m.numOfOperations - passed), Element.rgb 1 0 0 )
+        , frameLine (TrFinished.retriesNum m.translations) ( String.fromInt retries, Element.rgb 0 0 0 )
+        , frameLine (TrFinished.totalTime m.translations) ( timeString minTime maxTime, Element.rgb 0 0 0 )
+        , frameLine (TrFinished.detailedChecking m.translations)
             ( if m.detailedChecking then
-                "Tak"
+                TrFinished.yes m.translations
 
               else
-                "Nie"
+                TrFinished.no m.translations
             , Element.rgb 0 0 0
             )
         , Element.row [ Element.width Element.fill, Element.spacing 10 ]
-            [ frameButton "Nowa gra" NewGame
-            , frameButton "Przejrzyj odpowiedzi" Review
+            [ frameButton (TrFinished.newGame m.translations) NewGame
+            , frameButton (TrFinished.seeAnswers m.translations) Review
             ]
         ]
 
@@ -654,29 +679,35 @@ reviewOperationView m =
         Just cop ->
             operationSidebar
                 [ header <|
-                    "Działanie "
-                        ++ String.fromInt (done + 1)
-                        ++ " / "
-                        ++ String.fromInt (pending + done + 1)
+                    TrReview.operation
+                        m.translations
+                        (String.fromInt (done + 1))
+                        (String.fromInt (pending + done + 1))
                 , operationLine <|
-                    "Czas: "
-                        ++ timeString
+                    TrReview.time
+                        m.translations
+                    <|
+                        timeString
                             (Time.posixToMillis cop.timeStart)
                             (Time.posixToMillis cop.timeEnd)
-                , operationLine <| "Wykorzystano prób: " ++ String.fromInt cop.retries
                 , operationLine <|
-                    "Zaliczono: "
-                        ++ (if cop.passed then
-                                "tak"
+                    TrReview.retries
+                        m.translations
+                        (String.fromInt cop.retries)
+                , operationLine <|
+                    TrReview.passed
+                        m.translations
+                    <|
+                        if cop.passed then
+                            TrReview.yes m.translations
 
-                            else
-                                "nie"
-                           )
+                        else
+                            TrReview.no m.translations
                 , Element.row [ Element.width Element.fill, Element.spacing 5 ] <|
                     (optionalEl (done > 0) <| operationButton "◀" ReviewPrevOp (Element.rgb255 200 200 200))
                         :: (optionalEl (pending > 0) <| operationButton "▶" ReviewNextOp (Element.rgb255 200 200 200))
                         :: []
-                , operationButton "Powrót" ReviewExit (Element.rgb255 250 90 90)
+                , operationButton (TrReview.return m.translations) ReviewExit (Element.rgb255 250 90 90)
                 ]
 
         Nothing ->
@@ -751,7 +782,7 @@ gamePageView m =
 
                       else
                         Element.map GameMsg <| Multiplication.calculationView op.game m.width
-                    , arrowKeysView
+                    , arrowKeysView m.translations
                     ]
                 ]
 
@@ -769,10 +800,10 @@ resultView m =
                 , Element.width Element.fill
                 , Element.paddingXY 0 19
                 ]
-                [ withHeader "Twoja odpowiedź" (Element.rgb 1 0 0) <|
+                [ withHeader (TrGame.yourAnswer m.translations) (Element.rgb 1 0 0) <|
                     Multiplication.readOnlyCalculationView op.game (m.width // 2 - 10)
                 , Element.el [ Element.centerX, Border.width 2, Border.solid, Element.height Element.fill ] Element.none
-                , withHeader "Poprawna odpowiedź" (Element.rgb 0 0.75 0) <|
+                , withHeader (TrGame.correctAnswer m.translations) (Element.rgb 0 0.75 0) <|
                     Multiplication.correctCalculationView op.game (m.width // 2 - 10)
                 ]
 
@@ -798,8 +829,8 @@ withHeader txt clr el =
         ]
 
 
-arrowKeysView : Element.Element Msg
-arrowKeysView =
+arrowKeysView : I18Next.Translations -> Element.Element Msg
+arrowKeysView translations =
     Element.column [ Element.spacing 10, Element.padding 10, Element.alignRight, Element.alignBottom ]
         [ arrowKeyButton "▲" (GameMsg <| Multiplication.Focus Multiplication.FocusUp)
         , Element.row [ Element.width Element.fill, Element.spacing 60 ]
@@ -807,8 +838,8 @@ arrowKeysView =
             , arrowKeyButton "▶" (GameMsg <| Multiplication.Focus Multiplication.FocusRight)
             ]
         , arrowKeyButton "▼" (GameMsg <| Multiplication.Focus Multiplication.FocusDown)
-        , arrowKeysViewHint "Enter wywołuje sprawdzenie"
-        , arrowKeysViewHint "Używaj strzałek by się poruszać"
+        , arrowKeysViewHint (TrGame.enterHint translations)
+        , arrowKeysViewHint (TrGame.arrowsHint translations)
         ]
 
 
@@ -860,19 +891,22 @@ operationView m =
         Just cop ->
             operationSidebar
                 [ header <|
-                    "Działanie "
-                        ++ String.fromInt (done + 1)
-                        ++ " / "
-                        ++ String.fromInt (pending + done + 1)
-                , operationLine <| "Pozostało prób: " ++ String.fromInt (m.maxNumOfRetries - cop.retries)
+                    TrGame.operation
+                        m.translations
+                        (String.fromInt (done + 1))
+                        (String.fromInt (pending + done + 1))
+                , operationLine <|
+                    TrGame.retriesLeft
+                        m.translations
+                        (String.fromInt (m.maxNumOfRetries - cop.retries))
                 , Element.column
                     [ Element.paddingXY 20 0, Element.width Element.fill, Element.spacing 20 ]
                     [ if m.maxNumOfRetries - cop.retries > 0 then
-                        operationButton "Sprawdź" (GameMsg Multiplication.CheckResult) (Element.rgb255 200 200 200)
+                        operationButton (TrGame.check m.translations) (GameMsg Multiplication.CheckResult) (Element.rgb255 200 200 200)
 
                       else
                         Element.none
-                    , operationButton "Pomiń" SkipOperation (Element.rgb255 250 90 90)
+                    , operationButton (TrGame.skip m.translations) SkipOperation (Element.rgb255 250 90 90)
                     ]
                 ]
 

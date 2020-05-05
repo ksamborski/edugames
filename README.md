@@ -13,3 +13,15 @@ Demo is available here (in Polish): [karolsamborski.com/gry/mnozenie-pisemne](ht
 
 Running `make` will compile the source code with the debugger.
 `make multiplication_release` will compile it with optimizations.
+
+### Translation changes
+
+When you add new or delete old translations you need to regenerate the code by running:
+`make lang LANG=pl`
+
+Please note that only changes in json file structure need code regeneration.
+
+## Running
+
+If you'd like to run the game locally you first need to compile it (using the steps above) and then run:
+`docker-compose up`. After that you will be able to see it under [localhost:8000/demo/multiplication.html](http://localhost:8000/demo/multiplication.html)
