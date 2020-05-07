@@ -1,0 +1,52 @@
+{
+  "multiplication": {
+    "settingsPage": {
+      "header": "Writter multiplication",
+      "minNumOfDigits": "Minimum number of digits:",
+      "minNumOfDigitsDesc": "Picks random number from {{n}}",
+      "maxNumOfDigits": "Maximum number of digits:",
+      "maxNumOfDigitsDesc": "Picks random number up to {{n}}",
+      "maxNumOfRetries": "Maximum number of retries:",
+      "maxNumOfRetriesDesc": "When it comes down to 0 it will be marked as incorrect and the right answer will be shown",
+      "operationsNum": "Number of operations:",
+      "operationsNumDesc": "Number of operations to do",
+      "detailedChecking": "Detailed checking:",
+      "detailedCheckingDesc": "Checks also the digits entered above numbers (red color)",
+      "start": "Start"
+    },
+    "gameFinishedPage": {
+      "header": "Game over",
+      "numRange": "Number range:",
+      "numRangeDesc": "from {{from}} to {{to}}",
+      "operationsNum": "Number of operations:",
+      "correctAnswersNum": "Number of correct answers:",
+      "wrongAnswersNum": "Number of incorrect answers:",
+      "retriesNum": "Number of retries:",
+      "totalTime": "Total time:",
+      "detailedChecking": "Detailed checking:",
+      "yes": "Yes",
+      "no": "No",
+      "newGame": "New game",
+      "seeAnswers": "Review the answers"
+    },
+    "reviewPage": {
+      "operation": "Operation {{num}} / {{total}}",
+      "time": "Time: {{t}}",
+      "retries": "Retries: {{n}}",
+      "passed": "Passed: {{result}}",
+      "yes": "Yes",
+      "no": "No",
+      "return": "Return"
+    },
+    "gamePage": {
+      "yourAnswer": "Your answer",
+      "correctAnswer": "Correct answer",
+      "enterHint": "Enter runs checking",
+      "arrowsHint": "Use arrow keys to move around",
+      "operation": "Operation {{num}} / {{total}}",
+      "retriesLeft": "Retries left: {{n}}",
+      "check": "Check",
+      "skip": "Skip"
+    }
+  }
+}
