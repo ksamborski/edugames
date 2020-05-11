@@ -1,7 +1,7 @@
 {
   "multiplication": {
     "settingsPage": {
-      "header": "Writter multiplication",
+      "header": "Written multiplication",
       "minNumOfDigits": "Minimum number of digits:",
       "minNumOfDigitsDesc": "Picks random number from {{n}}",
       "maxNumOfDigits": "Maximum number of digits:",
