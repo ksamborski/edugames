@@ -21,6 +21,9 @@ When you add new or delete old translations you need to regenerate the code by r
 
 Please note that only changes in json file structure need code regeneration.
 
+In order to see the translation you should pass `lang` parameter in the URL, e. g.: [localhost:8000/demo/multiplication.html?lang=es](http://localhost:8000/demo/multiplication.html?lang=es)
+will show Spanish version of the game.
+
 ## Running
 
 If you'd like to run the game locally you first need to compile it (using the steps above) and then run:

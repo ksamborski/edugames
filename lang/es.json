@@ -1,0 +1,52 @@
+{
+  "multiplication": {
+    "settingsPage": {
+      "header": "Multiplicación vertical",
+      "minNumOfDigits": "Número mínimo de cifras:",
+      "minNumOfDigitsDesc": "Elige el número aleatorio de {{n}}",
+      "maxNumOfDigits": "Número máximo de cifras:",
+      "maxNumOfDigitsDesc": "Elige el número aleatorio a {{n}}",
+      "maxNumOfRetries": "Número máximo de intentos:",
+      "maxNumOfRetriesDesc": "Cuando llegue a 0 la operación será marcado como incorrecto y se aparecerá la solución correcta",
+      "operationsNum": "Número de operaciones:",
+      "operationsNumDesc": "Número de multiplicaciones verticales para hacer",
+      "detailedChecking": "Comprobación detallada:",
+      "detailedCheckingDesc": "Comprueba también cifras introducidas sobre los números (de color rojo)",
+      "start": "Comienza"
+    },
+    "gameFinishedPage": {
+      "header": "Fin del juego",
+      "numRange": "Rango de números:",
+      "numRangeDesc": "de {{from}} a {{to}}",
+      "operationsNum": "Número de operaciones:",
+      "correctAnswersNum": "Número de soluciones incorrectas:",
+      "wrongAnswersNum": "Número de soluciones correctas:",
+      "retriesNum": "Número de intentos:",
+      "totalTime": "Tiempo total:",
+      "detailedChecking": "Comprobación detallada:",
+      "yes": "Sí",
+      "no": "No",
+      "newGame": "Nuevo juego",
+      "seeAnswers": "Revisa las respuestas"
+    },
+    "reviewPage": {
+      "operation": "Operación {{num}} / {{total}}",
+      "time": "Tiempo: {{t}}",
+      "retries": "Intentos usados: {{n}}",
+      "passed": "Aprobado: {{result}}",
+      "yes": "sí",
+      "no": "no",
+      "return": "Regresa"
+    },
+    "gamePage": {
+      "yourAnswer": "Tu respuesta",
+      "correctAnswer": "La solución correcta",
+      "enterHint": "Enter ejecuta verificación",
+      "arrowsHint": "Utilice las teclas de flecha para mover",
+      "operation": "Operación {{num}} / {{total}}",
+      "retriesLeft": "Intentos restantes: {{n}}",
+      "check": "Comprueba",
+      "skip": "Sáltate"
+    }
+  }
+}

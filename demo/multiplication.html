@@ -21,7 +21,10 @@
         xobj.send(null);  
       }
 
-      loadJSON('/lang/pl.json', function(translations) {
+      var params = new URLSearchParams(location.search);
+      var lang = params.get('lang') || 'en';
+
+      loadJSON('/lang/' + lang + '.json', function(translations) {
         Elm.Multiplication.init({flags: translations, node: document.getElementById('game')});
       })
     </script>
