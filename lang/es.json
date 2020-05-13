@@ -3,9 +3,9 @@
     "settingsPage": {
       "header": "Multiplicación vertical",
       "minNumOfDigits": "Número mínimo de cifras:",
-      "minNumOfDigitsDesc": "Elige el número aleatorio de {{n}}",
+      "minNumOfDigitsDesc": "Eligirá un número aleatorio desde {{n}}",
       "maxNumOfDigits": "Número máximo de cifras:",
-      "maxNumOfDigitsDesc": "Elige el número aleatorio a {{n}}",
+      "maxNumOfDigitsDesc": "Eligirá un número aleatorio hasta {{n}}",
       "maxNumOfRetries": "Número máximo de intentos:",
       "maxNumOfRetriesDesc": "Cuando llegue a 0 la operación será marcado como incorrecto y se aparecerá la solución correcta",
       "operationsNum": "Número de operaciones:",
@@ -17,7 +17,7 @@
     "gameFinishedPage": {
       "header": "Fin del juego",
       "numRange": "Rango de números:",
-      "numRangeDesc": "de {{from}} a {{to}}",
+      "numRangeDesc": "desde {{from}} hasta {{to}}",
       "operationsNum": "Número de operaciones:",
       "correctAnswersNum": "Número de soluciones incorrectas:",
       "wrongAnswersNum": "Número de soluciones correctas:",
