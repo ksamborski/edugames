@@ -1,4 +1,18 @@
-module Division.Types exposing (Division, RemainderRowInput)
+module Division.Types exposing
+    ( DivisionInput
+    , Model
+    , Msg(..)
+    , RemainderRowInput
+    , emptyDivisionInput
+    , emptyModel
+    )
+
+import Array exposing (Array)
+
+
+type alias Model =
+    { currentOperation : DivisionInput
+    }
 
 
 type alias DivisionInput =
@@ -12,4 +26,23 @@ type alias DivisionInput =
 type alias RemainderRowInput =
     { upperRows : List (Array (Maybe Int))
     , resultRows : List (Array (Maybe Int))
+    }
+
+
+type Msg
+    = Msg
+
+
+emptyModel : Model
+emptyModel =
+    { currentOperation = emptyDivisionInput
+    }
+
+
+emptyDivisionInput : DivisionInput
+emptyDivisionInput =
+    { dividend = 0
+    , divisor = 0
+    , resultRow = Array.empty
+    , remainderRows = []
     }

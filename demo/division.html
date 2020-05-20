@@ -2,16 +2,16 @@
 <html lang="en" style="height: 100%">
   <head>
     <meta charset=utf-8>
-    <title>Written multiplication</title>
+    <title>Written division</title>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Montserrat&family=Oswald&display=swap" rel="stylesheet"> 
     <script src="lang.js"></script>
-    <script src="multiplication.js"></script>
+    <script src="division.js"></script>
   </head>
   <body style="width: 100%; height: 100%; font-family: 'Share Tech Mono', monospace;">
     <div id="game" style="width: 100%; height: 100%"></div>
     <script>
       loadJSON('/lang/' + lang + '.json', function(translations) {
-        Elm.Multiplication.init({flags: translations, node: document.getElementById('game')});
+        Elm.Division.init({flags: translations, node: document.getElementById('game')});
       })
     </script>
   </body>

@@ -1,3 +1,14 @@
+.PHONY: division
+division:
+	@docker-compose up -d app
+	@docker-compose exec app elm make src/Division.elm --output demo/division.js --debug
+
+.PHONY: division_release
+division_release:
+	@docker-compose up -d app
+	@docker-compose exec app elm make src/Division.elm --output demo/division.js --optimize
+	@docker-compose exec app elm-minify demo/division.js
+
 .PHONY: multiplication
 multiplication:
 	@docker-compose up -d app

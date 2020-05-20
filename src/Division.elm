@@ -1,11 +1,16 @@
 module Division exposing (main)
 
+import Browser
 import Browser.Dom as Dom
 import Browser.Events as Events
+import Division.Types as Division
+import Division.View as Division
 import Element
+import Html exposing (Html)
 import I18Next
 import Json.Decode
 import Json.Encode
+import Task
 import Theme.Math as Theme
 
 
@@ -14,6 +19,7 @@ type alias Model =
     , width : Int
     , height : Int
     , translations : I18Next.Translations
+    , game : Division.Model
     }
 
 
@@ -25,6 +31,7 @@ type Msg
     = GotSize Dom.Element
     | Resized
     | NoOp
+    | GameMsg Division.Msg
 
 
 main : Program Json.Encode.Value Model Msg
@@ -58,6 +65,9 @@ init flags =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg m =
     case msg of
+        GameMsg _ ->
+            ( m, Cmd.none )
+
         GotSize el ->
             ( { m | width = floor el.element.width, height = floor el.element.height }, Cmd.none )
 
@@ -79,9 +89,9 @@ view m =
         (gamePageView m)
 
 
-gamePageView : Model -> Html Msg
+gamePageView : Model -> Element.Element Msg
 gamePageView m =
-    Element.none
+    Element.map GameMsg <| Division.view m.game
 
 
 emptyModel : Model
@@ -90,4 +100,5 @@ emptyModel =
     , width = 0
     , height = 0
     , translations = I18Next.initialTranslations
+    , game = Division.emptyModel
     }
