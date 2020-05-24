@@ -1,8 +1,28 @@
-module Theme.Math exposing (gridBackground)
+module Theme.Math exposing (centerXbyCols, gridBackground)
 
 import Element
 import Element.Background as Background
 import Html.Attributes as Html
+
+
+centerXbyCols : Int -> Int -> List (Element.Attribute msg)
+centerXbyCols cols w =
+    let
+        width =
+            w - remainderBy 40 w
+
+        paddingX =
+            if remainderBy 2 cols == 0 then
+                (width - cols * 20) // 2
+
+            else
+                (width - (cols + 1) * 20) // 2
+    in
+    if w <= 0 then
+        [ Element.centerX, Element.paddingXY 0 19 ]
+
+    else
+        [ Element.paddingXY paddingX 19 ]
 
 
 gridBackground : List (Element.Attribute msg)
