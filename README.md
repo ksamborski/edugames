@@ -7,7 +7,11 @@ The goal of this repository is to have a bunch of simple games for kids to learn
 ### written multiplication
 
 Generates two numbers and checks user's input if it follows correctly the written multiplication method.
-Demo is available here (in Polish): [karolsamborski.com/gry/mnozenie-pisemne](https://karolsamborski.com/gry/mnozenie-pisemne/)
+Demo is available here: 
+
+- PL: [karolsamborski.com/gry/mnozenie-pisemne](https://karolsamborski.com/gry/mnozenie-pisemne/)
+- EN: [karolsamborski.com/en/games/written-multiplication](https://karolsamborski.com/en/games/written-multiplication/)
+- ES: [karolsamborski.com/es/juegos/multiplicacion-vertical](https://karolsamborski.com/es/juegos/multiplicacion-vertical/)
 
 ## Build instructions
 
