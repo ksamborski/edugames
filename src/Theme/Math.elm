@@ -1,7 +1,8 @@
-module Theme.Math exposing (centerXbyCols, gridBackground)
+module Theme.Math exposing (centerXbyCols, gridBackground, numberRow, numberText)
 
 import Element
 import Element.Background as Background
+import Element.Font as Font
 import Html.Attributes as Html
 
 
@@ -35,3 +36,26 @@ gridBackground =
     , Element.htmlAttribute <|
         Html.style "background-position" "-2px -2px, -2px -2px, -1px -1px, -1px -1px"
     ]
+
+
+numberRow : List (Element.Attribute msg) -> List (Element.Element msg) -> Element.Element msg
+numberRow atrs =
+    Element.row
+        ([ Element.width Element.fill
+         , Font.variant Font.tabularNumbers
+         ]
+            ++ atrs
+        )
+
+
+numberText : List (Element.Attribute msg) -> String -> Element.Element msg
+numberText atrs n =
+    Element.el
+        ([ Font.center
+         , Element.alignRight
+         , Element.width (Element.px 20)
+         ]
+            ++ atrs
+        )
+    <|
+        Element.text n

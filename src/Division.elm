@@ -91,7 +91,7 @@ view m =
 
 gamePageView : Model -> Element.Element Msg
 gamePageView m =
-    Element.map GameMsg <| Division.view m.game
+    Element.map GameMsg <| Division.calculationView m.game m.width
 
 
 emptyModel : Model
