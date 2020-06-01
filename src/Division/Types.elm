@@ -31,6 +31,7 @@ type alias RemainderRowInput =
 
 type Msg
     = Msg
+    | ChangeResult Int (Maybe Int)
 
 
 emptyModel : Model
@@ -43,6 +44,6 @@ emptyDivisionInput : DivisionInput
 emptyDivisionInput =
     { dividend = 0
     , divisor = 0
-    , resultRow = Array.empty
+    , resultRow = Array.repeat 5 Nothing
     , remainderRows = []
     }

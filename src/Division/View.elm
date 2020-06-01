@@ -30,7 +30,19 @@ calculationView m w =
 
 resultRowView : Array (Maybe Int) -> Element.Element Division.Msg
 resultRowView row =
-    Element.none
+    Theme.numberRow [] <|
+        List.map
+            (\( idx, mv ) ->
+                Theme.numberInput
+                    { onChange = Division.ChangeResult idx
+                    , maxDigits = 1
+                    , value = mv
+                    , id = "result" ++ String.fromInt idx
+                    }
+                    []
+            )
+        <|
+            Array.toIndexedList row
 
 
 operationRowView : Int -> Int -> Element.Element Division.Msg

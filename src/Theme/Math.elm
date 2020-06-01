@@ -1,8 +1,10 @@
-module Theme.Math exposing (centerXbyCols, gridBackground, numberRow, numberText)
+module Theme.Math exposing (centerXbyCols, gridBackground, numberInput, numberRow, numberText)
 
 import Element
 import Element.Background as Background
+import Element.Border as Border
 import Element.Font as Font
+import Element.Input as Input
 import Html.Attributes as Html
 
 
@@ -59,3 +61,31 @@ numberText atrs n =
         )
     <|
         Element.text n
+
+
+numberInput :
+    { onChange : Maybe Int -> msg, maxDigits : Int, value : Maybe Int, id : String }
+    -> List (Element.Attribute msg)
+    -> Element.Element msg
+numberInput opts attrs =
+    Input.text
+        ([ Element.width (Element.px 20)
+         , Font.color (Element.rgb255 200 10 10)
+         , Element.height (Element.px 20)
+         , Element.padding 0
+         , Element.pointer
+         , Element.focused [ Background.color (Element.rgba 1 1 1 0.5) ]
+         , Element.mouseOver [ Background.color (Element.rgba 1 1 1 0.25) ]
+         , Element.htmlAttribute <| Html.id opts.id
+         , Element.htmlAttribute <| Html.attribute "inputmode" "numeric"
+         , Element.htmlAttribute <| Html.pattern ("[0-9]{0," ++ String.fromInt opts.maxDigits ++ "}")
+         , Background.color (Element.rgba 1 1 1 0)
+         , Border.width 0
+         ]
+            ++ attrs
+        )
+        { onChange = opts.onChange << Maybe.map (remainderBy <| 10 ^ opts.maxDigits) << String.toInt
+        , text = Maybe.withDefault "" <| Maybe.map String.fromInt opts.value
+        , placeholder = Nothing
+        , label = Input.labelHidden ""
+        }
