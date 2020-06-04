@@ -15,34 +15,51 @@ import Theme.Math as Theme
 
 calculationView : Division.Model -> Int -> Element.Element Division.Msg
 calculationView m w =
+    let
+        nCols =
+            Array.length m.currentOperation.resultRow
+    in
     Element.el
         [ Element.width Element.fill
         , Element.height Element.fill
         ]
     <|
         Keyed.column
-            (Theme.centerXbyCols (Array.length m.currentOperation.resultRow) w)
+            (Theme.centerXbyCols nCols w)
             [ ( "resultRow", resultRowView m.currentOperation.resultRow )
             , ( "operationRow", operationRowView m.currentOperation.dividend m.currentOperation.divisor )
-            , ( "remainderRows", remainderRowsView m.currentOperation.remainderRows )
+            , ( "remainderRows", remainderRowsView nCols m.currentOperation.remainderRows )
             ]
 
 
-resultRowView : Array (Maybe Int) -> Element.Element Division.Msg
-resultRowView row =
+numberInputRow :
+    { onChange : Int -> Maybe Int -> Division.Msg, maxDigits : Int, id : String }
+    -> Array (Maybe Int)
+    -> Element.Element Division.Msg
+numberInputRow opts row =
     Theme.numberRow [] <|
         List.map
             (\( idx, mv ) ->
                 Theme.numberInput
-                    { onChange = Division.ChangeResult idx
-                    , maxDigits = 1
+                    { onChange = opts.onChange idx
+                    , maxDigits = opts.maxDigits
                     , value = mv
-                    , id = "result" ++ String.fromInt idx
+                    , id = opts.id ++ String.fromInt idx
                     }
                     []
             )
         <|
             Array.toIndexedList row
+
+
+resultRowView : Array (Maybe Int) -> Element.Element Division.Msg
+resultRowView row =
+    numberInputRow
+        { onChange = Division.ChangeResult
+        , maxDigits = 1
+        , id = "result"
+        }
+        row
 
 
 operationRowView : Int -> Int -> Element.Element Division.Msg
@@ -58,6 +75,24 @@ operationRowView dividend divisor =
             ++ (List.map (Theme.numberText [] << String.fromInt) <| Math.decimals divisor)
 
 
-remainderRowsView : List Division.RemainderRowInput -> Element.Element Division.Msg
-remainderRowsView remainders =
-    Element.none
+remainderRowsView : Int -> List Division.RemainderRowInput -> Element.Element Division.Msg
+remainderRowsView nCols remainders =
+    let
+        ( lastIdx, rows ) =
+            List.foldl
+                (\r ( idx, acc ) ->
+                    ( idx + 1, remainderRowView nCols idx r :: acc )
+                )
+                ( 0, [] )
+                remainders
+    in
+    Keyed.column [] <|
+        List.reverse <|
+            List.concat <|
+                remainderRowView nCols (lastIdx + 1) Division.emptyRemainderRowInput
+                    :: rows
+
+
+remainderRowView : Int -> Int -> Division.RemainderRowInput -> List ( String, Element.Element Division.Msg )
+remainderRowView nCols idx r =
+    []

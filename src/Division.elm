@@ -4,6 +4,7 @@ import Browser
 import Browser.Dom as Dom
 import Browser.Events as Events
 import Division.Types as Division
+import Division.Update as Division
 import Division.View as Division
 import Element
 import Html exposing (Html)
@@ -65,8 +66,12 @@ init flags =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg m =
     case msg of
-        GameMsg _ ->
-            ( m, Cmd.none )
+        GameMsg a ->
+            let
+                ( gm, gc ) =
+                    Division.update a m.game
+            in
+            ( { m | game = gm }, Cmd.map GameMsg gc )
 
         GotSize el ->
             ( { m | width = floor el.element.width, height = floor el.element.height }, Cmd.none )

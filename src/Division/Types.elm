@@ -5,6 +5,7 @@ module Division.Types exposing
     , RemainderRowInput
     , emptyDivisionInput
     , emptyModel
+    , emptyRemainderRowInput
     )
 
 import Array exposing (Array)
@@ -46,4 +47,11 @@ emptyDivisionInput =
     , divisor = 0
     , resultRow = Array.repeat 5 Nothing
     , remainderRows = []
+    }
+
+
+emptyRemainderRowInput : RemainderRowInput
+emptyRemainderRowInput =
+    { upperRows = []
+    , resultRows = []
     }
