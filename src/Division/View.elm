@@ -78,21 +78,48 @@ operationRowView dividend divisor =
 remainderRowsView : Int -> List Division.RemainderRowInput -> Element.Element Division.Msg
 remainderRowsView nCols remainders =
     let
-        ( lastIdx, rows ) =
+        ( lastIdx, lastRowLen, rows ) =
             List.foldl
-                (\r ( idx, acc ) ->
-                    ( idx + 1, remainderRowView nCols idx r :: acc )
+                (\r ( idx, _, acc ) ->
+                    ( idx + 1, List.length r.resultRows, remainderRowView nCols idx r :: acc )
                 )
-                ( 0, [] )
+                ( 0, 0, [] )
                 remainders
     in
     Keyed.column [] <|
         List.reverse <|
             List.concat <|
-                remainderRowView nCols (lastIdx + 1) Division.emptyRemainderRowInput
+                (if lastIdx == 0 || lastRowLen > 1 then
+                    remainderRowView nCols (lastIdx + 1) Division.emptyRemainderRowInput
+
+                 else
+                    []
+                )
                     :: rows
 
 
 remainderRowView : Int -> Int -> Division.RemainderRowInput -> List ( String, Element.Element Division.Msg )
-remainderRowView nCols idx r =
-    []
+remainderRowView nCols idx rowInput =
+    let
+        rowId i =
+            "remainderResultRow" ++ String.fromInt idx ++ "," ++ String.fromInt i
+
+        inputRow i vals =
+            ( rowId i
+            , numberInputRow
+                { onChange = Division.ChangeRemainderResult idx i
+                , maxDigits = 1
+                , id = rowId i ++ ","
+                }
+                vals
+            )
+
+        ( lastIdx, rows ) =
+            List.foldl
+                (\r ( ridx, acc ) -> ( ridx + 1, inputRow ridx r :: acc ))
+                ( 0, [] )
+                rowInput.resultRows
+    in
+    List.reverse <|
+        inputRow lastIdx (Array.repeat nCols Nothing)
+            :: rows

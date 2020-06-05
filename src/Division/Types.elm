@@ -31,8 +31,8 @@ type alias RemainderRowInput =
 
 
 type Msg
-    = Msg
-    | ChangeResult Int (Maybe Int)
+    = ChangeResult Int (Maybe Int)
+    | ChangeRemainderResult Int Int Int (Maybe Int)
 
 
 emptyModel : Model
