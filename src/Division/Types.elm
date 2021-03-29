@@ -19,6 +19,7 @@ type alias Model =
 type alias DivisionInput =
     { dividend : Int
     , divisor : Int
+    , rowLen : Int
     , resultRow : Array (Maybe Int)
     , remainderRows : List RemainderRowInput
     }
@@ -45,6 +46,7 @@ emptyDivisionInput : DivisionInput
 emptyDivisionInput =
     { dividend = 0
     , divisor = 0
+    , rowLen = 5
     , resultRow = Array.repeat 5 Nothing
     , remainderRows = []
     }
