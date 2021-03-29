@@ -7,7 +7,7 @@
     "dependencies": {
         "direct": {
             "ChristophP/elm-i18next": "4.1.2",
-            "Skinney/keyboard-events": "2.0.1",
+            "robinheghan/keyboard-events": "1.0.0",
             "elm/browser": "1.0.2",
             "elm/core": "1.0.5",
             "elm/html": "1.0.0",
