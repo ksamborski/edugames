@@ -3,6 +3,7 @@ module Division.Types exposing
     , Model
     , Msg(..)
     , RemainderRowInput
+    , RemainderRowInputRows
     , emptyDivisionInput
     , emptyModel
     , emptyRemainderRowInput
@@ -25,15 +26,20 @@ type alias DivisionInput =
     }
 
 
+type alias RemainderRowInputRows =
+    List (Array (Maybe Int))
+
+
 type alias RemainderRowInput =
-    { upperRows : List (Array (Maybe Int))
-    , resultRows : List (Array (Maybe Int))
+    { upperRows : RemainderRowInputRows
+    , resultRows : RemainderRowInputRows
     }
 
 
 type Msg
     = ChangeResult Int (Maybe Int)
     | ChangeRemainderResult Int Int Int (Maybe Int)
+    | ChangeRemainderUpper Int Int Int (Maybe Int)
 
 
 emptyModel : Model

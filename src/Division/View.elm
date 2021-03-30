@@ -87,15 +87,14 @@ remainderRowsView nCols remainders =
                 remainders
     in
     Keyed.column [] <|
-        List.reverse <|
-            List.concat <|
-                (if lastIdx == 0 || lastRowLen > 1 then
+        List.concat <|
+            List.append rows <|
+                [ if lastIdx == 0 || lastRowLen > 1 then
                     remainderRowView nCols (lastIdx + 1) Division.emptyRemainderRowInput
 
-                 else
+                  else
                     []
-                )
-                    :: rows
+                ]
 
 
 remainderRowView : Int -> Int -> Division.RemainderRowInput -> List ( String, Element.Element Division.Msg )
@@ -120,6 +119,4 @@ remainderRowView nCols idx rowInput =
                 ( 0, [] )
                 rowInput.resultRows
     in
-    List.reverse <|
-        inputRow lastIdx (Array.repeat nCols Nothing)
-            :: rows
+    List.append rows [ inputRow lastIdx (Array.repeat nCols Nothing) ]

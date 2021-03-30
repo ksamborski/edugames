@@ -5,6 +5,10 @@ import Division.Types as Division
 import List.Extra as List
 
 
+type alias RemainderUpdateF =
+    Int -> Int -> Int -> Maybe Int -> Division.RemainderRowInput -> Division.RemainderRowInput
+
+
 update : Division.Msg -> Division.Model -> ( Division.Model, Cmd Division.Msg )
 update msg m =
     case msg of
@@ -12,7 +16,10 @@ update msg m =
             ( { m | currentOperation = changeResult m.currentOperation x mv }, Cmd.none )
 
         Division.ChangeRemainderResult rIdx y x mv ->
-            ( { m | currentOperation = changeRemainderResult m.currentOperation rIdx y x mv }, Cmd.none )
+            ( { m | currentOperation = changeRemainder changeRemainderResultRow m.currentOperation rIdx y x mv }, Cmd.none )
+
+        Division.ChangeRemainderUpper rIdx y x mv ->
+            ( { m | currentOperation = changeRemainder changeRemainderUpperRow m.currentOperation rIdx y x mv }, Cmd.none )
 
 
 changeResult : Division.DivisionInput -> Int -> Maybe Int -> Division.DivisionInput
@@ -20,27 +27,38 @@ changeResult cop x mv =
     { cop | resultRow = Array.set x mv cop.resultRow }
 
 
-changeRemainderResult : Division.DivisionInput -> Int -> Int -> Int -> Maybe Int -> Division.DivisionInput
-changeRemainderResult cop rIdx y x mv =
+changeRemainder : RemainderUpdateF -> Division.DivisionInput -> Int -> Int -> Int -> Maybe Int -> Division.DivisionInput
+changeRemainder f cop rIdx y x mv =
     { cop
         | remainderRows =
             if rIdx >= List.length cop.remainderRows then
-                changeRemainderResultRow cop.rowLen y x mv Division.emptyRemainderRowInput
+                f cop.rowLen y x mv Division.emptyRemainderRowInput
                     :: cop.remainderRows
 
             else
-                List.updateAt rIdx (changeRemainderResultRow cop.rowLen y x mv) cop.remainderRows
+                List.updateAt rIdx (f cop.rowLen y x mv) cop.remainderRows
     }
 
 
 changeRemainderResultRow : Int -> Int -> Int -> Maybe Int -> Division.RemainderRowInput -> Division.RemainderRowInput
 changeRemainderResultRow len y x mv rowInput =
     { rowInput
-        | resultRows =
-            if y >= List.length rowInput.resultRows then
-                Array.set x mv (Array.repeat len Nothing)
-                    :: rowInput.resultRows
-
-            else
-                List.updateAt y (Array.set x mv) rowInput.resultRows
+        | resultRows = updateRemainderRow len y x mv rowInput.resultRows
     }
+
+
+changeRemainderUpperRow : Int -> Int -> Int -> Maybe Int -> Division.RemainderRowInput -> Division.RemainderRowInput
+changeRemainderUpperRow len y x mv rowInput =
+    { rowInput
+        | upperRows = updateRemainderRow len y x mv rowInput.upperRows
+    }
+
+
+updateRemainderRow : Int -> Int -> Int -> Maybe Int -> Division.RemainderRowInputRows -> Division.RemainderRowInputRows
+updateRemainderRow len y x mv rows =
+    if y >= List.length rows then
+        Array.set x mv (Array.repeat len Nothing)
+            :: rows
+
+    else
+        List.updateAt y (Array.set x mv) rows
