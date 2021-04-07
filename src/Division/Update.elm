@@ -43,22 +43,28 @@ changeRemainder f cop rIdx y x mv =
 changeRemainderResultRow : Int -> Int -> Int -> Maybe Int -> Division.RemainderRowInput -> Division.RemainderRowInput
 changeRemainderResultRow len y x mv rowInput =
     { rowInput
-        | resultRows = updateRemainderRow len y x mv rowInput.resultRows
+        | resultRows = updateRemainderRow True len y x mv rowInput.resultRows
     }
 
 
 changeRemainderUpperRow : Int -> Int -> Int -> Maybe Int -> Division.RemainderRowInput -> Division.RemainderRowInput
 changeRemainderUpperRow len y x mv rowInput =
     { rowInput
-        | upperRows = updateRemainderRow len y x mv rowInput.upperRows
+        | upperRows = updateRemainderRow False len y x mv rowInput.upperRows
     }
 
 
-updateRemainderRow : Int -> Int -> Int -> Maybe Int -> Division.RemainderRowInputRows -> Division.RemainderRowInputRows
-updateRemainderRow len y x mv rows =
+updateRemainderRow : Bool -> Int -> Int -> Int -> Maybe Int -> Division.RemainderRowInputRows -> Division.RemainderRowInputRows
+updateRemainderRow prepend len y x mv rows =
     if y >= List.length rows then
-        Array.set x mv (Array.repeat len Nothing)
-            :: rows
+        if prepend then
+            Array.set x mv (Array.repeat len Nothing)
+                :: rows
+
+        else
+            List.append
+                rows
+                [ Array.set x mv (Array.repeat len Nothing) ]
 
     else
         List.updateAt y (Array.set x mv) rows

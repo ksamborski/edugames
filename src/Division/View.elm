@@ -9,8 +9,20 @@ import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
 import Element.Keyed as Keyed
+import Html.Attributes as Html
 import Math.Utils as Math
 import Theme.Math as Theme
+
+
+upperRowStyle : List (Element.Attribute Division.Msg)
+upperRowStyle =
+    [ Font.size 12
+    , Font.color (Element.rgb255 200 10 10)
+    , Element.htmlAttribute (Html.style "direction" "rtl")
+    , Element.htmlAttribute (Html.style "text-align" "center")
+    , Element.htmlAttribute (Html.style "height" "20px")
+    , Element.alignRight
+    ]
 
 
 calculationView : Division.Model -> Int -> Element.Element Division.Msg
@@ -33,7 +45,7 @@ calculationView m w =
 
 
 numberInputRow :
-    { onChange : Int -> Maybe Int -> Division.Msg, maxDigits : Int, id : String }
+    { onChange : Int -> Maybe Int -> Division.Msg, maxDigits : Int, id : String, style : List (Element.Attribute Division.Msg) }
     -> Array (Maybe Int)
     -> Element.Element Division.Msg
 numberInputRow opts row =
@@ -46,7 +58,7 @@ numberInputRow opts row =
                     , value = mv
                     , id = opts.id ++ String.fromInt idx
                     }
-                    []
+                    opts.style
             )
         <|
             Array.toIndexedList row
@@ -58,6 +70,7 @@ resultRowView row =
         { onChange = Division.ChangeResult
         , maxDigits = 1
         , id = "result"
+        , style = []
         }
         row
 
@@ -100,23 +113,60 @@ remainderRowsView nCols remainders =
 remainderRowView : Int -> Int -> Division.RemainderRowInput -> List ( String, Element.Element Division.Msg )
 remainderRowView nCols idx rowInput =
     let
-        rowId i =
-            "remainderResultRow" ++ String.fromInt idx ++ "," ++ String.fromInt i
-
-        inputRow i vals =
-            ( rowId i
-            , numberInputRow
-                { onChange = Division.ChangeRemainderResult idx i
-                , maxDigits = 1
-                , id = rowId i ++ ","
-                }
-                vals
-            )
+        ( uLastIdx, uRows ) =
+            List.foldl
+                (\r ( ridx, acc ) -> ( ridx + 1, remainderRowUpperRow idx ridx r :: acc ))
+                ( 0, [] )
+                rowInput.upperRows
 
         ( lastIdx, rows ) =
             List.foldl
-                (\r ( ridx, acc ) -> ( ridx + 1, inputRow ridx r :: acc ))
+                (\r ( ridx, acc ) -> ( ridx + 1, remainderRowResultRow idx ridx r :: acc ))
                 ( 0, [] )
                 rowInput.resultRows
+
+        upperRows =
+            if List.length rows > 1 then
+                remainderRowUpperRow idx uLastIdx (Array.repeat nCols Nothing) :: uRows
+
+            else
+                []
+
+        resultRows =
+            List.append rows [ remainderRowResultRow idx lastIdx (Array.repeat nCols Nothing) ]
     in
-    List.append rows [ inputRow lastIdx (Array.repeat nCols Nothing) ]
+    List.append upperRows resultRows
+
+
+remainderRowResultRow : Int -> Int -> Division.RemainderRowInputRow -> ( String, Element.Element Division.Msg )
+remainderRowResultRow y x vals =
+    let
+        rowId =
+            "remainderResultRow" ++ String.fromInt y ++ "," ++ String.fromInt x
+    in
+    ( rowId
+    , numberInputRow
+        { onChange = Division.ChangeRemainderResult y x
+        , maxDigits = 1
+        , id = rowId ++ ","
+        , style = []
+        }
+        vals
+    )
+
+
+remainderRowUpperRow : Int -> Int -> Division.RemainderRowInputRow -> ( String, Element.Element Division.Msg )
+remainderRowUpperRow y x vals =
+    let
+        rowId =
+            "remainderResultRowUpper" ++ String.fromInt y ++ "," ++ String.fromInt x
+    in
+    ( rowId
+    , numberInputRow
+        { onChange = Division.ChangeRemainderUpper y x
+        , maxDigits = 1
+        , id = rowId ++ ","
+        , style = upperRowStyle
+        }
+        vals
+    )
