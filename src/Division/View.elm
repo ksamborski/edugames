@@ -64,6 +64,31 @@ numberInputRow opts row =
             Array.toIndexedList row
 
 
+opNumberInputRow :
+    { op : String, onChange : Int -> Maybe Int -> Division.Msg, maxDigits : Int, id : String, style : List (Element.Attribute Division.Msg) }
+    -> Array (Maybe Int)
+    -> Element.Element Division.Msg
+opNumberInputRow opts row =
+    Theme.opNumberRow
+        opts.op
+        [ Border.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
+        , Border.solid
+        ]
+    <|
+        List.map
+            (\( idx, mv ) ->
+                Theme.numberInput
+                    { onChange = opts.onChange idx
+                    , maxDigits = opts.maxDigits
+                    , value = mv
+                    , id = opts.id ++ String.fromInt idx
+                    }
+                    opts.style
+            )
+        <|
+            Array.toIndexedList row
+
+
 resultRowView : Array (Maybe Int) -> Element.Element Division.Msg
 resultRowView row =
     numberInputRow
@@ -121,7 +146,7 @@ remainderRowView nCols idx rowInput =
 
         ( lastIdx, rows ) =
             List.foldl
-                (\r ( ridx, acc ) -> ( ridx + 1, remainderRowResultRow idx ridx r :: acc ))
+                (\r ( ridx, acc ) -> ( ridx + 1, remainderRowResultRow idx ridx False r :: acc ))
                 ( 0, [] )
                 rowInput.resultRows
 
@@ -133,25 +158,36 @@ remainderRowView nCols idx rowInput =
                 []
 
         resultRows =
-            List.append rows [ remainderRowResultRow idx lastIdx (Array.repeat nCols Nothing) ]
+            List.append rows [ remainderRowResultRow idx lastIdx (List.length rows > 1) (Array.repeat nCols Nothing) ]
     in
     List.append upperRows resultRows
 
 
-remainderRowResultRow : Int -> Int -> Division.RemainderRowInputRow -> ( String, Element.Element Division.Msg )
-remainderRowResultRow y x vals =
+remainderRowResultRow : Int -> Int -> Bool -> Division.RemainderRowInputRow -> ( String, Element.Element Division.Msg )
+remainderRowResultRow y x withOpLine vals =
     let
         rowId =
             "remainderResultRow" ++ String.fromInt y ++ "," ++ String.fromInt x
     in
     ( rowId
-    , numberInputRow
-        { onChange = Division.ChangeRemainderResult y x
-        , maxDigits = 1
-        , id = rowId ++ ","
-        , style = []
-        }
-        vals
+    , if withOpLine then
+        opNumberInputRow
+            { onChange = Division.ChangeRemainderResult y x
+            , maxDigits = 1
+            , id = rowId ++ ","
+            , style = []
+            , op = "-"
+            }
+            vals
+
+      else
+        numberInputRow
+            { onChange = Division.ChangeRemainderResult y x
+            , maxDigits = 1
+            , id = rowId ++ ","
+            , style = []
+            }
+            vals
     )
 
 

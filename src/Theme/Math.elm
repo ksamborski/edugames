@@ -1,4 +1,11 @@
-module Theme.Math exposing (centerXbyCols, gridBackground, numberInput, numberRow, numberText)
+module Theme.Math exposing
+    ( centerXbyCols
+    , gridBackground
+    , numberInput
+    , numberRow
+    , numberText
+    , opNumberRow
+    )
 
 import Element
 import Element.Background as Background
@@ -48,6 +55,16 @@ numberRow atrs =
          ]
             ++ atrs
         )
+
+
+opNumberRow : String -> List (Element.Attribute msg) -> List (Element.Element msg) -> Element.Element msg
+opNumberRow op attrs elements =
+    numberRow attrs <| operatorEl op :: elements
+
+
+operatorEl : String -> Element.Element msg
+operatorEl op =
+    Element.el [ Element.width (Element.px 20) ] <| Element.text op
 
 
 numberText : List (Element.Attribute msg) -> String -> Element.Element msg
