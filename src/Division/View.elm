@@ -25,6 +25,11 @@ upperRowStyle =
     ]
 
 
+numberRowStyle : List (Element.Attribute Division.Msg)
+numberRowStyle =
+    [ Element.alignRight ]
+
+
 calculationView : Division.Model -> Int -> Element.Element Division.Msg
 calculationView m w =
     let
@@ -95,22 +100,25 @@ resultRowView row =
         { onChange = Division.ChangeResult
         , maxDigits = 1
         , id = "result"
-        , style = []
+        , style = numberRowStyle
         }
         row
 
 
 operationRowView : Int -> Int -> Element.Element Division.Msg
 operationRowView dividend divisor =
-    Theme.numberRow
-        [ Border.widthEach { bottom = 0, left = 0, right = 0, top = 1 } ]
+    Element.el
+        [ Element.alignRight ]
     <|
-        (List.map (Theme.numberText [] << String.fromInt) <| Math.decimals dividend)
-            ++ [ Theme.numberText [] ""
-               , Theme.numberText [] ":"
-               , Theme.numberText [] ""
-               ]
-            ++ (List.map (Theme.numberText [] << String.fromInt) <| Math.decimals divisor)
+        Theme.numberRow
+            [ Border.widthEach { bottom = 0, left = 0, right = 0, top = 1 } ]
+        <|
+            (List.map (Theme.numberText [] << String.fromInt) <| Math.decimals dividend)
+                ++ [ Theme.numberText [] ""
+                   , Theme.numberText [] ":"
+                   , Theme.numberText [] ""
+                   ]
+                ++ (List.map (Theme.numberText [] << String.fromInt) <| Math.decimals divisor)
 
 
 remainderRowsView : Int -> List Division.RemainderRowInput -> Element.Element Division.Msg
@@ -158,7 +166,13 @@ remainderRowView nCols idx rowInput =
                 []
 
         resultRows =
-            List.append rows [ remainderRowResultRow idx lastIdx (List.length rows > 1) (Array.repeat nCols Nothing) ]
+            List.append rows
+                [ remainderRowResultRow
+                    idx
+                    lastIdx
+                    (List.length rows > 1)
+                    (Array.repeat nCols Nothing)
+                ]
     in
     List.append upperRows resultRows
 
@@ -175,7 +189,7 @@ remainderRowResultRow y x withOpLine vals =
             { onChange = Division.ChangeRemainderResult y x
             , maxDigits = 1
             , id = rowId ++ ","
-            , style = []
+            , style = numberRowStyle
             , op = "-"
             }
             vals
@@ -185,7 +199,7 @@ remainderRowResultRow y x withOpLine vals =
             { onChange = Division.ChangeRemainderResult y x
             , maxDigits = 1
             , id = rowId ++ ","
-            , style = []
+            , style = numberRowStyle
             }
             vals
     )
